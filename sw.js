@@ -1,6 +1,6 @@
 // Pig App: funciona sin señal. La app se guarda en el celular; los datos van a Google Drive u OneDrive al sincronizar.
-const CACHE = 'pigapp-v2';
-const APP = ['./', './index.html', './config.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png', './icons/icon-180.png'];
+const CACHE = 'pigapp-v3';
+const APP = ['./', './index.html', './config.js', './manifest.webmanifest', './icon-192.png', './icon-512.png', './maskable-512.png', './icon-180.png'];
 // Librerías externas que sí se guardan para usar sin señal
 const LIBS = /^(fonts\.googleapis\.com|fonts\.gstatic\.com|cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net)$/;
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(APP)).then(() => self.skipWaiting())); });
