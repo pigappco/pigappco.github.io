@@ -214,6 +214,18 @@ function api(url,opt){return pedirToken(false).then(function(tk){opt=opt||{};opt
 var SH='https://sheets.googleapis.com/v4/spreadsheets/';
 var HINT='';
 var DOM_G=/@(gmail|googlemail)\.com$/i,DOM_M=/@(outlook|hotmail|live|msn|passport)\.[a-z.]+$/i;
+var gidListo=false;
+function jwtDatos(t){try{var b=t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');return JSON.parse(decodeURIComponent(atob(b).split('').map(function(c){return '%'+('00'+c.charCodeAt(0).toString(16)).slice(-2);}).join('')));}catch(e){return {};}}
+function cuentaElegida(resp){var d=jwtDatos(resp.credential||'');if(!d.email)return;HINT=String(d.email).toLowerCase();AUTH.name=d.name||'';try{localStorage.setItem('pigapp-lastemail',HINT);}catch(e){}
+  var box=document.getElementById('gcuentas');if(!box){entrar();return;}
+  box.innerHTML='<div class="alert ok" style="width:100%;text-align:left">'+(d.picture?'<img src="'+esc(d.picture)+'" alt="" style="width:32px;height:32px;border-radius:50%;vertical-align:middle;margin-right:8px">':'')+'<b>'+esc(d.name||HINT)+'</b><br><span class="note">'+esc(HINT)+'</span></div><button class="btn pri" type="button" data-act="login" style="width:100%;padding:13px">Continuar y dar permiso a Drive</button>';
+  entrar();}
+function detectarCuentas(n){n=n||0;var box=document.getElementById('gcuentas');if(!box)return;
+  if(!(window.google&&google.accounts&&google.accounts.id)){if(n<40)setTimeout(function(){detectarCuentas(n+1);},250);return;}
+  if(!gidListo){google.accounts.id.initialize({client_id:CFG.clientId,callback:cuentaElegida,auto_select:false,cancel_on_tap_outside:false,use_fedcm_for_prompt:true,context:'signin',ux_mode:'popup',itp_support:true});gidListo=true;}
+  try{google.accounts.id.renderButton(box,{type:'standard',theme:'outline',size:'large',text:'continue_with',shape:'pill',locale:'es',width:Math.min(340,box.clientWidth||320)});}catch(e){}
+  var ot=document.getElementById('gotro');if(ot)ot.hidden=false;
+  try{google.accounts.id.prompt();}catch(e){}}
 function continuarCorreo(v){var em=String(v||'').trim().toLowerCase(),er=document.getElementById('loginerr');
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){er.textContent='Escribe un correo válido';return;}
   HINT=em;try{localStorage.setItem('pigapp-lastemail',em);}catch(e){}
@@ -487,11 +499,14 @@ function render(){
   var listo=AUTH.email&&tieneBase();fab.hidden=!listo||miRol()==='Consulta';tabs.hidden=!listo;
   if(!AUTH.email){document.getElementById('bar').innerHTML='';var ult='';try{ult=localStorage.getItem('pigapp-lastemail')||'';}catch(e){}
     m.innerHTML='<form class="login" id="loginform" novalidate><img src="icon-192.png" alt=""><h1>Pig App</h1><p class="note">Cerdas, lotes, alimento y costos de tu granja.</p>'+
+      '<div id="gcuentas" style="width:100%;max-width:340px;display:flex;flex-direction:column;align-items:center;gap:8px"></div>'+
+      (CFG.clientId?'<p class="note" id="gotro" hidden>o escribe otro correo:</p>':'')+
       '<div class="field" style="width:100%;max-width:340px;text-align:left"><label for="loginemail">Tu correo</label><input id="loginemail" type="email" inputmode="email" autocomplete="email" placeholder="tucorreo@gmail.com" value="'+esc(ult)+'"><span class="err" id="loginerr"></span><small>Funciona con Gmail y con Outlook o Hotmail.</small></div>'+
       '<button class="btn pri" type="submit" style="width:100%;max-width:340px;padding:13px">Entrar</button><div id="loginpick" hidden style="width:100%;max-width:340px;display:flex;flex-direction:column;gap:8px"><p class="note">¿Con qué cuenta es ese correo?</p><button class="gbtn" type="button" data-act="login"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#4285F4" d="M44 24c0-1.3-.1-2.4-.4-3.5H24v8h11.3c-.5 2.6-2 4.8-4.2 6.3l6.2 5.2C41.4 36.4 44 30.7 44 24z"/><path fill="#34A853" d="M24 44c5.4 0 10-1.8 13.3-4.9l-6.2-5.2c-1.8 1.2-4.2 2-7.1 2-5.2 0-9.6-3.5-11.2-8.3l-6.4 5C9.6 39.4 16.3 44 24 44z"/><path fill="#FBBC05" d="M12.8 27.6c-.4-1.2-.6-2.4-.6-3.6s.2-2.5.6-3.6l-6.4-5C5 18.1 4 21 4 24s1 5.9 2.4 8.6l6.4-5z"/><path fill="#EA4335" d="M24 12c3 0 5.6 1 7.7 3l5.8-5.8C34 6 29.4 4 24 4 16.3 4 9.6 8.6 6.4 15.4l6.4 5C14.4 15.6 18.8 12 24 12z"/></svg>Cuenta de Google</button><button class="gbtn" type="button" data-act="loginms"><svg viewBox="0 0 23 23" aria-hidden="true"><path fill="#f35325" d="M1 1h10v10H1z"/><path fill="#81bc06" d="M12 1h10v10H12z"/><path fill="#05a6f0" d="M1 12h10v10H1z"/><path fill="#ffba08" d="M12 12h10v10H12z"/></svg>Cuenta de Microsoft</button></div>'+
       (CFG.clientId||CFG.msClientId?'':'<div class="alert warn" style="max-width:340px">Esta copia no tiene configurados los ID de Google y Microsoft: entrarás en modo de prueba, con los datos guardados solo en este celular.</div>')+
       '<p class="note">La primera vez Google o Microsoft te piden confirmar la cuenta. Después la app entra sola.</p></form>';
     var fm=document.getElementById('loginform');fm.onsubmit=function(ev){ev.preventDefault();continuarCorreo(document.getElementById('loginemail').value);};
+    if(CFG.clientId)detectarCuentas();
     document.getElementById('loginemail').oninput=function(){document.getElementById('loginerr').textContent='';document.getElementById('loginpick').hidden=true;};
     return;}
   if(!tieneBase()){document.getElementById('bar').innerHTML='<div class="bar-in"><h1>Pig App</h1></div>';m.innerHTML='<div class="card"><h2>Hola'+(AUTH.name?', '+esc(AUTH.name.split(' ')[0]):'')+'</h2><p class="note">Entraste como '+esc(AUTH.email)+'. Elige cómo empezar:</p><button class="btn pri wide" data-act="crearbase">Crear mi granja nueva</button><p class="note">'+(PROV==='ms'?'Crea en tu OneDrive, en la carpeta Pig App, el Excel "Pig App - Base de datos", donde quedará toda la información.':'Crea en tu Google Drive la hoja "Pig App · Base de datos", donde quedará toda la información.')+'</p></div><div class="card"><h2>Unirme a una granja</h2><p class="note">Si el dueño ya te agregó como usuario, pega aquí '+(PROV==='ms'?'el código de la granja (empieza por PIGMS:)':'el enlace de la base de datos')+' que te compartió.</p><div class="field"><label for="joinlink">'+(PROV==='ms'?'Código de la granja':'Enlace de la hoja')+'</label><input id="joinlink" placeholder="'+(PROV==='ms'?'PIGMS:…':'https://docs.google.com/spreadsheets/d/…')+'"></div><button class="btn wide" data-act="unirse">Conectar</button></div><button class="btn wide" data-act="logout">Usar otra cuenta</button>';return;}
