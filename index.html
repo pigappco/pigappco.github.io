@@ -1,0 +1,1053 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Pig App</title>
+<meta name="theme-color" content="#b8325d">
+<meta name="description" content="Control de cerdas, lotes, alimento y costos de tu granja porcina.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: app de celular — barra superior con granja, contenido en tarjetas, barra de pestañas inferior y botón + de registro */
+:root{
+  --bg:#eef1ee; --surface:#ffffff; --sunk:#f5f7f5; --ink:#1d2a26; --muted:#5d6b66; --line:#d8dfdb;
+  --accent:#b8325d; --accent-soft:#f7e1e8; --ok:#2f7a4f; --ok-soft:#dcefe3; --warn:#9a5b00; --warn-soft:#fbeccf;
+  --bad:#b42318; --bad-soft:#fde4e1; --info:#2c5d8a; --info-soft:#e1ecf6; --scrim:rgba(20,28,26,.45);
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Atkinson Hyperlegible",ui-sans-serif,system-ui,sans-serif;
+  --f-data:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121816; --surface:#1c2422; --sunk:#171e1c; --ink:#e6ece9; --muted:#9aa8a2; --line:#2e3936;
+  --accent:#f07ca0; --accent-soft:#3a2129; --ok:#7fd1a0; --ok-soft:#1d3327; --warn:#f2b45a; --warn-soft:#3a2c14;
+  --bad:#ff8a7a; --bad-soft:#3d1f1b; --info:#8cbbe6; --info-soft:#1c2c3b; --scrim:rgba(0,0,0,.6); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121816; --surface:#1c2422; --sunk:#171e1c; --ink:#e6ece9; --muted:#9aa8a2; --line:#2e3936;
+  --accent:#f07ca0; --accent-soft:#3a2129; --ok:#7fd1a0; --ok-soft:#1d3327; --warn:#f2b45a; --warn-soft:#3a2c14;
+  --bad:#ff8a7a; --bad-soft:#3d1f1b; --info:#8cbbe6; --info-soft:#1c2c3b; --scrim:rgba(0,0,0,.6); color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.45;margin:0}
+[hidden]{display:none!important}
+.login{min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center}
+.login img{width:96px;height:96px;border-radius:24px}
+.login h1{font-family:var(--f-display);font-weight:800;font-size:2.2rem;margin:0}
+.gbtn{display:inline-flex;align-items:center;gap:10px;font:inherit;font-weight:700;font-size:1rem;border-radius:12px;padding:12px 18px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.gbtn svg{width:20px;height:20px}
+.sync{cursor:pointer}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--surface)}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.bar-in{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px;display:flex;align-items:center;gap:10px}
+.bar h1{font-family:var(--f-display);font-weight:800;font-size:1.25rem;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.back{border:0;background:transparent;color:var(--ink);font-size:1.4rem;padding:4px 8px 4px 0;cursor:pointer;line-height:1}
+.farm{font:inherit;font-size:.85rem;font-weight:700;color:var(--accent);background:var(--accent-soft);border:0;border-radius:999px;padding:6px 10px;max-width:46%}
+.sync{font-size:.72rem;color:var(--muted);white-space:nowrap}
+main{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px calc(96px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px}
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+.tabs-in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
+.tab{border:0;background:transparent;color:var(--muted);font:inherit;font-size:.72rem;font-weight:700;padding:8px 2px 10px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+.tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tab[aria-current="page"]{color:var(--accent)}
+.fab{position:fixed;z-index:21;right:max(16px,calc(env(safe-area-inset-right,0px) + 16px));bottom:calc(74px + env(safe-area-inset-bottom,0px));width:56px;height:56px;border-radius:18px;border:0;background:var(--accent);color:var(--surface);font-size:1.9rem;line-height:1;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+h2{font-family:var(--f-display);font-weight:600;font-size:1.05rem;margin:0}
+.label{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card-h{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stat{background:var(--sunk);border-radius:12px;padding:10px 8px;text-align:center;cursor:pointer;border:0;font:inherit;color:inherit}
+.stat b{display:block;font-family:var(--f-display);font-size:1.5rem;font-weight:800;line-height:1.1}
+.stat span{font-size:.72rem;color:var(--muted)}
+.list{display:flex;flex-direction:column}
+.item{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;padding:11px 0;border-top:1px solid var(--line);background:none;border-left:0;border-right:0;border-bottom:0;font:inherit;color:inherit;text-align:left;width:100%;cursor:pointer}
+.item:first-child{border-top:0}
+.item.static{cursor:default}
+.item .t{font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.item .s{grid-column:1/-1;font-size:.85rem;color:var(--muted)}
+.item .r{font-family:var(--f-data);font-size:.8rem;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.chip{display:inline-block;font-size:.74rem;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.c-gest{background:var(--accent-soft);color:var(--accent)} .c-lact{background:var(--info-soft);color:var(--info)}
+.c-vacia{background:var(--warn-soft);color:var(--warn)} .c-ok{background:var(--ok-soft);color:var(--ok)}
+.c-bad{background:var(--bad-soft);color:var(--bad)} .c-mut{background:var(--sunk);color:var(--muted)}
+.kv{display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:.92rem}
+.kv dt{color:var(--muted)} .kv dd{margin:0;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.big{font-family:var(--f-display);font-weight:800;font-size:2rem;line-height:1}
+.ration{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ration div{background:var(--sunk);border-radius:12px;padding:10px;text-align:center}
+.ration b{display:block;font-family:var(--f-display);font-size:1.25rem}
+.ration span{font-size:.72rem;color:var(--muted)}
+.meter{height:8px;border-radius:4px;background:var(--line);position:relative;overflow:hidden}
+.meter i{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:4px}
+.note{font-size:.85rem;color:var(--muted);margin:0}
+.alert{border-radius:12px;padding:10px 12px;font-size:.9rem}
+.alert.bad{background:var(--bad-soft);color:var(--bad)} .alert.warn{background:var(--warn-soft);color:var(--warn)} .alert.ok{background:var(--ok-soft);color:var(--ok)}
+.acts{display:flex;flex-wrap:wrap;gap:8px}
+button.btn{font:inherit;font-size:.9rem;font-weight:700;border-radius:10px;padding:9px 13px;cursor:pointer;border:1px solid var(--line);background:var(--sunk);color:var(--ink)}
+button.pri{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+button.wide{width:100%;padding:12px}
+.seg{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.seg button{flex:none;font:inherit;font-size:.85rem;font-weight:700;border-radius:999px;padding:6px 12px;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.empty{text-align:center;color:var(--muted);padding:20px 8px;display:flex;flex-direction:column;gap:12px;align-items:center}
+.sheet-wrap{position:fixed;inset:0;z-index:40;background:var(--scrim);display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:560px;max-height:92%;overflow-y:auto;border-radius:20px 20px 0 0;padding:16px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:12px}
+.sheet h2{font-size:1.2rem}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:.85rem;font-weight:700}
+.field small{font-size:.78rem;color:var(--muted)}
+.field input,.field select,.field textarea{font:inherit;font-size:1rem;color:var(--ink);background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:10px 11px;width:100%}
+.field .err{color:var(--bad);font-size:.8rem}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.menu{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.menu button{font:inherit;text-align:left;border:1px solid var(--line);background:var(--sunk);color:var(--ink);border-radius:12px;padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+.menu button b{font-size:.92rem} .menu button span{font-size:.76rem;color:var(--muted)}
+.row-in{display:grid;grid-template-columns:1fr 6.5rem;gap:10px;align-items:center;padding:6px 0;border-top:1px solid var(--line)}
+.row-in input{font:inherit;color:var(--ink);background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:8px;width:100%;text-align:right}
+.tl{display:flex;flex-direction:column;gap:0}
+.tl .ev{display:grid;grid-template-columns:6.4rem 1fr;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:.9rem}
+.tl .ev:first-child{border-top:0}
+.tl .d{font-family:var(--f-data);font-size:.78rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.tl .past{opacity:.5} .tl .next .d{color:var(--accent);font-weight:700}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(140px + env(safe-area-inset-bottom,0px));z-index:50;background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:12px;font-size:.9rem;max-width:90%}
+.mono{font-family:var(--f-data);font-variant-numeric:tabular-nums}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (max-width:380px){.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+
+<script src="config.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@2.39.0/lib/msal-browser.min.js" defer></script>
+</head>
+<body>
+<header class="bar" id="bar"></header>
+<main id="main"><div class="card"><p class="note">Cargando la granja…</p></div></main>
+<button class="fab" id="fab" aria-label="Registrar">+</button>
+<nav class="tabs"><div class="tabs-in" id="tabs"></div></nav>
+<div id="layer"></div>
+
+<script>
+(function(){
+/* ============ utilidades ============ */
+var DAY=86400000;
+function today(){var t=new Date();return new Date(t.getFullYear(),t.getMonth(),t.getDate());}
+function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function parse(s){if(!s)return null;var p=String(s).split('-').map(Number);return new Date(p[0],p[1]-1,p[2]);}
+function add(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x;}
+function diff(a,b){return Math.round((b-a)/DAY);}
+var FD=new Intl.DateTimeFormat('es-CO',{day:'numeric',month:'short'});
+var FDY=new Intl.DateTimeFormat('es-CO',{day:'numeric',month:'short',year:'numeric'});
+function fd(d){if(!d)return '—';d=typeof d==='string'?parse(d):d;return (d.getFullYear()===today().getFullYear()?FD:FDY).format(d).replace(/\./g,'');}
+function n1(x){return (Math.round(x*10)/10).toLocaleString('es-CO');}
+function n0(x){return Math.round(x).toLocaleString('es-CO');}
+function money(x){return '$'+Math.round(x||0).toLocaleString('es-CO');}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function uid(p){return p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function rel(d){var n=diff(today(),d);if(n===0)return 'hoy';if(n===1)return 'mañana';if(n===-1)return 'ayer';return n>0?'en '+n+' días':'hace '+(-n)+' días';}
+
+/* ============ conocimiento técnico ============ */
+var TIPOS=['Preiniciador','Inicio','Levante','Engorde','Gestación'];
+var NORMAS_DEF=[
+ {e:'Lactancia (con la madre)',d0:0,d1:29,a:'Preiniciador',kg:0.03},
+ {e:'Preiniciador (destete a ~12 kg)',d0:30,d1:44,a:'Preiniciador',kg:0.5},
+ {e:'Inicio (12 a 30 kg)',d0:45,d1:77,a:'Inicio',kg:1.0},
+ {e:'Levante (30 a 50 kg)',d0:78,d1:107,a:'Levante',kg:1.8},
+ {e:'Engorde 1 (50 a 75 kg)',d0:108,d1:140,a:'Engorde',kg:2.3},
+ {e:'Engorde 2 (75 kg a venta)',d0:141,d1:99999,a:'Engorde',kg:2.8}];
+var POR_PESO=[[50,'Engorde'],[30,'Levante'],[12,'Inicio'],[0,'Preiniciador']];
+var MADRES_DEF={a:'Gestación',vacia:2.5,gest1:2.0,gest2:2.5,lactBase:2,lactLechon:0.5,relevo:2.5,descarte:2.0};
+function NORMAS(){var c=S.config&&S.config.normas;return c&&c.etapas&&c.etapas.length?c.etapas:NORMAS_DEF;}
+function MAD(){var c=S.config&&S.config.normas;return Object.assign({},MADRES_DEF,c&&c.madres||{});}
+var CURVA=[[0,1.4],[21,6],[28,7.5],[42,11],[56,17],[70,25],[84,33],[100,45],[120,60],[140,78],[160,95],[180,110],[210,125],[240,140],[300,165],[365,185],[540,220],[730,240]];
+var GEST=114,LACT=30,KGB=40,EDMIN=230,PESMIN=130,PMAX=7,LECH=10,COBMIN=7,COBOBJ=30;
+function pesoEsperado(dias){if(dias<=0)return CURVA[0][1];for(var i=1;i<CURVA.length;i++){if(dias<=CURVA[i][0]){var a=CURVA[i-1],b=CURVA[i];return a[1]+(b[1]-a[1])*(dias-a[0])/(b[0]-a[0]);}}return CURVA[CURVA.length-1][1];}
+function normaEdad(dias){var N=NORMAS();for(var i=0;i<N.length;i++)if(dias>=N[i].d0&&dias<=N[i].d1)return N[i];return N[N.length-1];}
+function evalPeso(kg,dias){var e=pesoEsperado(dias),r=kg/e;return {esp:e,ratio:r,estado:r<0.85?'Bajo':(r>1.15?'Alto':'Normal')};}
+
+/* ============ datos (Google Sheets en tu Drive, con copia en el celular) ============ */
+var CFG=window.PIG_CONFIG||{};if(/PEGA_AQUI/.test(CFG.clientId||''))CFG.clientId='';if(/PEGA_AQUI/.test(CFG.msClientId||''))CFG.msClientId='';
+var COLS=['granjas','cerdas','ciclos','lotes','regs','config','usuarios'];
+var S={},T={};COLS.forEach(function(c){S[c]={};T[c]={};});
+var PROV='',MSF={d:'',i:'',etag:''};var dirty={},LSK='pigapp-v1',AUTH={token:null,exp:0,email:'',name:''},SHEET='',lastSync=0,syncing=false,syncMsg='',online=navigator.onLine;
+var ui={tab:'inicio',det:null,granja:'todas',per:'anio',filtro:'todas'};
+var SEED={"granjas": {"g1": {"nombre": "El Progreso", "ubicacion": "Villa Claudia"}}, "cerdas": {"c01": {"granja": "g1", "codigo": "C01", "nombre": "Grande 1", "tipo": "Madre", "raza": "", "nac": "2025-12-28", "origen": "Compra", "estadoFicha": "Activa", "valorCompra": 200000, "creado": 1}, "c02": {"granja": "g1", "codigo": "C02", "nombre": "Grande 2", "tipo": "Madre", "raza": "", "nac": "2025-12-28", "origen": "Compra", "estadoFicha": "Activa", "valorCompra": 200000, "creado": 2}, "c03": {"granja": "g1", "codigo": "C03", "nombre": "Grande 3", "tipo": "Madre", "raza": "", "nac": "2025-12-28", "origen": "Compra", "estadoFicha": "Activa", "valorCompra": 200000, "creado": 3}, "c04": {"granja": "g1", "codigo": "C04", "nombre": "Grande 4", "tipo": "Madre", "raza": "", "nac": "2025-12-28", "origen": "Compra", "estadoFicha": "Activa", "valorCompra": 200000, "creado": 4}, "c05": {"granja": "g1", "codigo": "C05", "nombre": "Duroc", "tipo": "Madre", "raza": "Duroc", "nac": "2026-02-12", "origen": "Compra", "estadoFicha": "Activa", "valorCompra": 200000, "creado": 5}}, "ciclos": {"ci01": {"granja": "g1", "cerda": "c01", "num": 1, "servicio": "2026-11-07", "tipoS": "Inseminación", "resultado": "Pendiente"}, "ci05": {"granja": "g1", "cerda": "c05", "num": 1, "servicio": "2026-11-07", "tipoS": "Inseminación", "resultado": "Pendiente"}}};
+try{var c0=JSON.parse(localStorage.getItem(LSK)||'null');if(c0){COLS.forEach(function(c){S[c]=(c0.S&&c0.S[c])||{};T[c]=(c0.T&&c0.T[c])||{};});dirty=c0.dirty||{};SHEET=c0.sheet||'';PROV=c0.prov||(SHEET?'google':'');if(c0.msf)MSF=c0.msf;lastSync=c0.lastSync||0;AUTH.email=c0.email||'';AUTH.name=c0.name||'';if(c0.ui)ui.granja=c0.ui.granja||'todas';}}catch(e){}
+function persist(){try{localStorage.setItem(LSK,JSON.stringify({S:S,T:T,dirty:dirty,sheet:SHEET,prov:PROV,msf:MSF,lastSync:lastSync,email:AUTH.email,name:AUTH.name,ui:{granja:ui.granja}}));}catch(e){toast('El celular no tiene espacio para guardar');}}
+function miRol(){var u=S.usuarios[(AUTH.email||'').toLowerCase()];if(!u)return Object.keys(S.usuarios).length?'Consulta':'Administrador';return u.rol||'Operario';}
+function put(col,id,data){if(col!=='usuarios'&&miRol()==='Consulta'){toast('Tu usuario es solo de consulta');return;}var d=Object.assign({},data);delete d.id;d._u=Date.now();S[col][id]=d;delete T[col][id];dirty[col]=1;persist();programarSync();}
+function del(col,id){if(miRol()==='Consulta'){toast('Tu usuario es solo de consulta');return;}delete S[col][id];T[col][id]=Date.now();dirty[col]=1;persist();programarSync();}
+var syncT=null;function programarSync(){clearTimeout(syncT);syncT=setTimeout(function(){sync(false);},2500);}
+function pendientes(){return Object.keys(dirty).length;}
+function syncLabel(){var el=document.getElementById('sync');if(!el)return;
+  if(PROV==='demo')el.textContent='Modo demostración';
+  else if(syncing)el.textContent='Sincronizando…';
+  else if(!navigator.onLine)el.textContent=pendientes()?'Sin señal · cambios guardados en el celular':'Sin señal';
+  else if(syncMsg)el.textContent=syncMsg;
+  else if(pendientes())el.textContent='Toca para subir cambios';
+  else el.textContent=lastSync?'Al día':'Toca para sincronizar';}
+window.addEventListener('online',function(){online=true;syncLabel();sync(false);});
+window.addEventListener('offline',function(){online=false;syncLabel();});
+
+/* --- Google --- */
+var tokenClient=null,tokenWaiters=[];
+var SCOPES='openid email profile https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
+function gsiListo(){return !!(window.google&&google.accounts&&google.accounts.oauth2);}
+function gToken(interactivo){return new Promise(function(res,rej){
+  if(AUTH.token&&Date.now()<AUTH.exp-60000)return res(AUTH.token);
+  if(!interactivo)return rej({code:'need_login'});
+  if(!CFG.clientId)return rej({code:'no_client'});
+  if(!gsiListo())return rej({code:'no_gsi'});
+  if(!tokenClient)tokenClient=google.accounts.oauth2.initTokenClient({client_id:CFG.clientId,scope:SCOPES,callback:function(r){var w=tokenWaiters;tokenWaiters=[];
+    if(r&&r.access_token){AUTH.token=r.access_token;AUTH.exp=Date.now()+(+r.expires_in||3600)*1000;w.forEach(function(x){x[0](r.access_token);});}else w.forEach(function(x){x[1]({code:'denied'});});},
+    error_callback:function(e){var w=tokenWaiters;tokenWaiters=[];w.forEach(function(x){x[1]({code:'denied',e:e});});}});
+  tokenWaiters.push([res,rej]);tokenClient.requestAccessToken({prompt:(AUTH.email||HINT)?'':'select_account',login_hint:AUTH.email||HINT||undefined});});}
+var MS_SCOPES=['User.Read','Files.ReadWrite.All'],msApp=null;
+function msListo(){return !!(window.msal&&CFG.msClientId);}
+function msInit(){if(msApp||!msListo())return msApp;msApp=new msal.PublicClientApplication({auth:{clientId:CFG.msClientId,authority:'https://login.microsoftonline.com/common',redirectUri:location.origin+location.pathname.replace(/index\.html$/,'')},cache:{cacheLocation:'localStorage'}});return msApp;}
+function msToken(interactivo){var app=msInit();if(!app)return Promise.reject({code:'no_msal'});var acc=app.getAllAccounts()[0];
+  if(!acc){if(interactivo)app.loginRedirect({scopes:MS_SCOPES,loginHint:HINT||AUTH.email||undefined});return Promise.reject({code:'need_login'});}
+  return app.acquireTokenSilent({scopes:MS_SCOPES,account:acc}).then(function(r){AUTH.token=r.accessToken;AUTH.exp=r.expiresOn?+new Date(r.expiresOn):Date.now()+3000000;return r.accessToken;})
+    .catch(function(){if(interactivo)app.acquireTokenRedirect({scopes:MS_SCOPES,account:acc});throw {code:'need_login'};});}
+function pedirToken(interactivo){return PROV==='ms'?msToken(interactivo):gToken(interactivo);}
+function api(url,opt){return pedirToken(false).then(function(tk){opt=opt||{};opt.headers=Object.assign({'Authorization':'Bearer '+tk},opt.body?{'Content-Type':'application/json'}:{},opt.headers||{});
+  return fetch(url,opt).then(function(r){if(r.status===401){AUTH.token=null;throw {code:'need_login'};}if(!r.ok)return r.text().then(function(t){throw {code:'http',status:r.status,text:t};});return r.status===204?{}:r.json();});});}
+var SH='https://sheets.googleapis.com/v4/spreadsheets/';
+var HINT='';
+var DOM_G=/@(gmail|googlemail)\.com$/i,DOM_M=/@(outlook|hotmail|live|msn|passport)\.[a-z.]+$/i;
+function continuarCorreo(v){var em=String(v||'').trim().toLowerCase(),er=document.getElementById('loginerr');
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){er.textContent='Escribe un correo válido';return;}
+  HINT=em;try{localStorage.setItem('pigapp-lastemail',em);}catch(e){}
+  if(!CFG.clientId&&!CFG.msClientId){PROV='demo';AUTH.email=em;AUTH.name='';persist();if(!Object.keys(S.granjas).length)importarSeed();render();toast('Modo de prueba: datos solo en este celular');return;}
+  var g=DOM_G.test(em),ms=DOM_M.test(em);
+  if(g&&CFG.clientId)return entrar();
+  if(ms&&CFG.msClientId)return entrarMS();
+  if(g||ms){er.textContent='Esta app todavía no tiene activada la entrada con '+(g?'Google':'Microsoft')+'.';return;}
+  var pk=document.getElementById('loginpick');pk.hidden=false;}
+function entrarMS(){var app=msInit();if(!app){toast(CFG.msClientId?'No se pudo cargar el inicio de sesión de Microsoft. Revisa la señal.':'Falta el ID de Microsoft en config.js');return;}PROV='ms';persist();app.loginRedirect({scopes:MS_SCOPES,loginHint:HINT||undefined});}
+function msVolver(){var app=msInit();if(!app)return;app.handleRedirectPromise().then(function(r){var acc=(r&&r.account)||app.getAllAccounts()[0];
+  if(r&&r.accessToken){AUTH.token=r.accessToken;AUTH.exp=r.expiresOn?+new Date(r.expiresOn):Date.now()+3000000;}
+  if(acc&&(PROV==='ms'||!AUTH.email)){PROV='ms';AUTH.email=(acc.username||'').toLowerCase();AUTH.name=acc.name||'';persist();render();if(MSF.i)sync(false);}}).catch(function(){toast('No se pudo iniciar sesión con Microsoft');});}
+function entrar(){PROV='google';pedirToken(true).then(function(){return api('https://www.googleapis.com/oauth2/v3/userinfo');}).then(function(u){AUTH.email=(u.email||'').toLowerCase();AUTH.name=u.name||'';persist();render();if(SHEET)sync(false);})
+  .catch(function(e){toast(e&&e.code==='no_client'?'Falta el Client ID en config.js':(e&&e.code==='no_gsi'?'No se pudo cargar el inicio de sesión de Google. Revisa la señal.':'No se pudo iniciar sesión'));});}
+function salir(){try{if(AUTH.token&&gsiListo())google.accounts.oauth2.revoke(AUTH.token,function(){});}catch(e){}
+  if(PROV==='ms'&&msInit()){try{var ac=msApp.getAllAccounts()[0];if(ac)msApp.logoutRedirect({account:ac,postLogoutRedirectUri:location.href});}catch(e){}}
+  AUTH={token:null,exp:0,email:'',name:''};SHEET='';PROV='';MSF={d:'',i:'',etag:''};COLS.forEach(function(c){S[c]={};T[c]={};});dirty={};lastSync=0;persist();ui.det=null;ui.tab='inicio';render();}
+function crearBase(){syncMsg='Creando la base de datos…';syncLabel();
+  var body={properties:{title:'Pig App · Base de datos',locale:'es_CO',timeZone:'America/Bogota'},sheets:COLS.map(function(c){return {properties:{title:c},data:[{startRow:0,startColumn:0,rowData:[{values:['id','datos','actualizado','borrado'].map(function(v){return {userEnteredValue:{stringValue:v}};})}]}]};})};
+  pedirToken(true).then(function(){return api('https://sheets.googleapis.com/v4/spreadsheets',{method:'POST',body:JSON.stringify(body)});}).then(function(r){
+    SHEET=r.spreadsheetId;put('usuarios',AUTH.email,{email:AUTH.email,nombre:AUTH.name,rol:'Administrador'});syncMsg='';persist();render();sync(false);toast('Base de datos creada en tu Google Drive');})
+  .catch(function(e){syncMsg='';syncLabel();toast('No se pudo crear la base de datos');});}
+function unirse(link){var t=String(link||'').trim();
+  if(/^PIGMS:/i.test(t)){if(PROV!=='ms'){toast('Ese código es de una granja en OneDrive: entra con tu cuenta de Microsoft');return;}var p=t.slice(6).split('!');if(p.length!==2){toast('El código no está completo');return;}
+    MSF={d:p[0],i:p[1],etag:''};msToken(true).then(function(){return api(GR+'/drives/'+MSF.d+'/items/'+MSF.i+'?select=id');}).then(function(){persist();render();sync(false);toast('Conectado a la granja');})
+      .catch(function(){MSF={d:'',i:'',etag:''};toast('No tienes acceso a ese Excel. Pide que te agreguen como usuario.');});return;}
+  if(PROV==='ms'){toast('Ese enlace es de una granja en Google: entra con tu Gmail');return;}
+  var m=t.match(/\/d\/([a-zA-Z0-9_-]{20,})/)||t.match(/^([a-zA-Z0-9_-]{30,})$/);if(!m){toast('Pega el enlace completo de la hoja');return;}
+  var id=m[1];pedirToken(true).then(function(){return api(SH+id+'?fields=properties.title');}).then(function(){SHEET=id;persist();render();sync(false);toast('Conectado a la granja');})
+  .catch(function(){toast('No tienes acceso a esa hoja. Pide que te agreguen como usuario.');});}
+var GR='https://graph.microsoft.com/v1.0';
+function xlsxListo(){return new Promise(function(res,rej){cargarXLSX(res);setTimeout(function(){if(!window.XLSX)rej({code:'no_xlsx'});},20000);});}
+function libroBase(){var wb=XLSX.utils.book_new();
+  hojasLegibles().forEach(function(x){XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(x[1].length?x[1]:[{Sin_datos:''}]),x[0]);});
+  COLS.forEach(function(col){var rows=[['id','datos','actualizado','borrado']];Object.keys(S[col]).forEach(function(id){var d=Object.assign({},S[col][id]),u=+d._u||Date.now();delete d._u;rows.push([id,JSON.stringify(d),u,'']);});
+    Object.keys(T[col]).forEach(function(id){rows.push([id,'',T[col][id],'1']);});XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'_'+col);});
+  return XLSX.write(wb,{bookType:'xlsx',type:'array'});}
+function msLeer(){return api(GR+'/drives/'+MSF.d+'/items/'+MSF.i+'?select=id,eTag,%40microsoft.graph.downloadUrl').then(function(it){MSF.etag=it.eTag;var u=it['@microsoft.graph.downloadUrl'];
+  return Promise.all([xlsxListo(),fetch(u).then(function(r){if(!r.ok)throw {code:'http',status:r.status};return r.arrayBuffer();})]);}).then(function(x){var wb=XLSX.read(x[1],{type:'array'}),out={};
+  COLS.forEach(function(col){var sh=wb.Sheets['_'+col];out[col]=sh?XLSX.utils.sheet_to_json(sh,{header:1,raw:true}).slice(1):[];});return out;});}
+function msSubir(buf,url,etag){return pedirToken(false).then(function(tk){var h={'Authorization':'Bearer '+tk,'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'};if(etag)h['If-Match']=etag;
+  return fetch(url,{method:'PUT',headers:h,body:buf}).then(function(r){if(r.status===412)throw {code:'cambio'};if(r.status===423)throw {code:'bloqueado'};if(r.status===401){AUTH.token=null;throw {code:'need_login'};}if(!r.ok)throw {code:'http',status:r.status};return r.json();});});}
+function msEscribir(){var g=ui.granja;ui.granja='todas';var buf;try{buf=libroBase();}finally{ui.granja=g;}
+  return msSubir(buf,GR+'/drives/'+MSF.d+'/items/'+MSF.i+'/content',MSF.etag).then(function(it){MSF.etag=it.eTag;});}
+function msCrear(){syncMsg='Creando el Excel en tu OneDrive…';syncLabel();
+  msToken(true).then(function(){return xlsxListo();}).then(function(){put('usuarios',AUTH.email,{email:AUTH.email,nombre:AUTH.name,rol:'Administrador'});
+    return msSubir(libroBase(),GR+'/me/drive/root:/Pig%20App/Pig%20App%20-%20Base%20de%20datos.xlsx:/content?@microsoft.graph.conflictBehavior=rename',null);})
+  .then(function(it){MSF={d:it.parentReference.driveId,i:it.id,etag:it.eTag};dirty={};lastSync=Date.now();syncMsg='';persist();render();toast('Excel creado en OneDrive › Pig App');})
+  .catch(function(){syncMsg='';syncLabel();toast('No se pudo crear el Excel en OneDrive');});}
+function tieneBase(){return PROV==='demo'?true:(PROV==='ms'?!!MSF.i:!!SHEET);}
+function codigoGranja(){return PROV==='ms'?'PIGMS:'+MSF.d+'!'+MSF.i:'https://docs.google.com/spreadsheets/d/'+SHEET;}
+function sync(interactivo){
+  if(PROV==='demo'){syncLabel();return;}
+  if(!tieneBase()||syncing)return;if(!navigator.onLine){syncLabel();return;}
+  syncing=true;syncMsg='';syncLabel();
+  var leer=PROV==='ms'?function(){return msLeer();}:function(){var ranges=COLS.map(function(c){return 'ranges='+encodeURIComponent(c+'!A2:D');}).join('&');
+    return api(SH+SHEET+'/values:batchGet?valueRenderOption=UNFORMATTED_VALUE&'+ranges).then(function(r){var out={};(r.valueRanges||[]).forEach(function(vr,i){out[COLS[i]]=vr.values||[];});return out;});};
+  pedirToken(!!interactivo).then(leer).then(function(remoto){
+    var cambiar=[];
+    COLS.forEach(function(col){var rows=remoto[col]||[],remotos={},escribir=!!dirty[col];
+      rows.forEach(function(row){var id=String(row[0]||'');if(!id)return;var u=+row[2]||0,borr=String(row[3]||'')==='1';var dat=null;if(!borr){try{dat=JSON.parse(row[1]||'{}');}catch(e){return;}}remotos[id]=1;
+        var loc=S[col][id],locU=loc?(+loc._u||0):(T[col][id]||0);
+        if(u>locU){if(borr){delete S[col][id];T[col][id]=u;}else{dat._u=u;S[col][id]=dat;delete T[col][id];}}
+        else if(locU>u)escribir=true;});
+      Object.keys(S[col]).forEach(function(id){if(!remotos[id])escribir=true;});
+      Object.keys(T[col]).forEach(function(id){if(!remotos[id])escribir=true;});
+      if(escribir)cambiar.push(col);});
+    var limite=Date.now()-120*86400000;COLS.forEach(function(col){Object.keys(T[col]).forEach(function(id){if(T[col][id]<limite)delete T[col][id];});});
+    if(!cambiar.length)return null;
+    if(PROV==='ms')return msEscribir();
+    var data=cambiar.map(function(col){var vals=[];
+      Object.keys(S[col]).forEach(function(id){var d=Object.assign({},S[col][id]),u=+d._u||Date.now();delete d._u;vals.push([id,JSON.stringify(d),u,'']);});
+      Object.keys(T[col]).forEach(function(id){vals.push([id,'',T[col][id],'1']);});
+      return {range:col+'!A2',values:vals};});
+    return api(SH+SHEET+'/values:batchClear',{method:'POST',body:JSON.stringify({ranges:cambiar.map(function(c){return c+'!A2:D';})})})
+      .then(function(){return api(SH+SHEET+'/values:batchUpdate',{method:'POST',body:JSON.stringify({valueInputOption:'RAW',data:data})});});
+  }).then(function(){dirty={};lastSync=Date.now();syncing=false;syncMsg='';persist();render();})
+  .catch(function(e){syncing=false;
+    if(e&&e.code==='cambio'){persist();setTimeout(function(){sync(false);},1500);return;}
+    if(e&&e.code==='need_login')syncMsg='Toca para sincronizar';
+    else if(e&&e.code==='bloqueado')syncMsg='El Excel está abierto en otro lado · ciérralo y toca aquí';
+    else if(e&&e.status===404)syncMsg='No se encuentra la base de datos';
+    else if(e&&e.status===403)syncMsg='Sin permiso en la base de datos';
+    else syncMsg=navigator.onLine?'Error al sincronizar · toca para reintentar':'';
+    persist();syncLabel();});
+}
+function importarSeed(){Object.keys(SEED).forEach(function(col){Object.keys(SEED[col]).forEach(function(id){put(col,id,SEED[col][id]);});});ui.granja='todas';toast('Datos importados');render();}
+setInterval(function(){if(tieneBase()&&navigator.onLine&&(PROV==='ms'||(AUTH.token&&Date.now()<AUTH.exp-60000)))sync(false);},120000);
+
+/* ============ consultas ============ */
+function vals(col){return Object.keys(S[col]).map(function(k){var o=Object.assign({},S[col][k]);o.id=k;return o;});}
+function enGranja(o){return ui.granja==='todas'||o.granja===ui.granja;}
+function granjas(){return vals('granjas').sort(function(a,b){return (a.nombre||'').localeCompare(b.nombre||'');});}
+function cerdas(all){return vals('cerdas').filter(function(c){return enGranja(c)&&(all||(c.estadoFicha!=='Vendida'&&c.estadoFicha!=='Muerta'));}).sort(function(a,b){return (a.codigo||'').localeCompare(b.codigo||'');});}
+function lotes(all){return vals('lotes').filter(function(l){return enGranja(l)&&(all||l.estado!=='Cerrado');}).sort(function(a,b){return (a.nac||'').localeCompare(b.nac||'');});}
+function regs(tipo,ref){return vals('regs').filter(function(r){return r.tipo===tipo&&(ref?r.ref===ref:true);}).sort(function(a,b){return (a.fecha||'').localeCompare(b.fecha||'');});}
+function ciclosDe(cid){return vals('ciclos').filter(function(c){return c.cerda===cid;}).sort(function(a,b){return (a.servicio||'').localeCompare(b.servicio||'');});}
+function nombreG(id){var g=S.granjas[id];return g?g.nombre:'';}
+
+function ultimoPeso(ref){var p=regs('pesaje',ref);return p.length?p[p.length-1]:null;}
+function edadDias(nac,en){return nac?diff(parse(nac),en||today()):null;}
+
+function estadoCerda(c){
+  if(c.estadoFicha==='Vendida'||c.estadoFicha==='Muerta')return {e:'Fuera'};
+  if(c.estadoFicha==='Descarte')return {e:'Descarte'};
+  var cs=ciclosDe(c.id),u=cs[cs.length-1];
+  if(!u)return {e:c.tipo==='Relevo'?'Relevo':'Vacía',desde:null};
+  if(u.destete)return {e:'Vacía',ciclo:u,desde:'destete'};
+  if(u.parto)return {e:'Lactante',ciclo:u,dia:diff(parse(u.parto),today())+1};
+  if(u.resultado==='Repitió'||u.resultado==='Aborto')return {e:'Vacía',ciclo:u,desde:'repitio'};
+  return {e:'Gestante',ciclo:u,dia:diff(parse(u.servicio),today())+1};
+}
+function madresDe(l){return l.madres&&l.madres.length?l.madres:(l.madre?[l.madre]:[]);}
+function lechonesLactando(u){return u?Math.max(0,(+u.vivos||0)-(+u.muertesLact||0)+(+u.adoptEntran||0)-(+u.adoptSalen||0)):0;}
+function sexoCamada(u){if(!u||(u.machos==null&&u.hembras==null))return null;return {m:Math.max(0,(+u.machos||0)-(+u.muertesM||0)),h:Math.max(0,(+u.hembras||0)-(+u.muertesH||0))};}
+function sexoLote(l){if(l.machos==null&&l.hembras==null)return null;var m=+l.machos||0,h=+l.hembras||0;regs('movimiento',l.id).forEach(function(x){if(x.sexo==='Machos')m-=(+x.cabezas||0);else if(x.sexo==='Hembras')h-=(+x.cabezas||0);});return {m:Math.max(0,m),h:Math.max(0,h)};}
+function retiroHasta(ref){var mx='';regs('sanidad',ref).forEach(function(r){if(r.retiroHasta&&r.retiroHasta>mx)mx=r.retiroHasta;});return mx&&mx>=iso(today())?mx:null;}
+function sanCount(ref,tipoS,desde){return regs('sanidad',ref).filter(function(r){return r.tipoS===tipoS&&(!desde||r.fecha>=desde);}).length;}
+var PLAN_LOTE=[{d:56,t:'Desparasitar el lote',tipo:'Desparasitante',n:1},{d:112,t:'Desparasitar el lote (2.ª vez)',tipo:'Desparasitante',n:2},{d:213,t:'Seleccionar hembras para madres',sel:true}];
+function eventosLote(l){var ev=[];if(!l.nac||l.estado==='Cerrado'||cabezasLote(l)<=0)return ev;var b=parse(l.nac);
+  PLAN_LOTE.forEach(function(p){if(p.sel&&(l.negocio||'Cría')!=='Cría')return;ev.push({t:p.t,d:add(b,p.d),hecho:p.tipo?sanCount(l.id,p.tipo)>=p.n:false});});
+  var rt=retiroHasta(l.id);if(rt)ev.push({t:'Termina retiro de medicamento',d:parse(rt)});return ev;}
+function conversionLote(l){var pw=regs('pesaje',l.id);if(pw.length<2)return null;var a=pw[0],b=pw[pw.length-1];
+  var cons=regs('consumo',l.id).filter(function(r){return r.fecha>=a.fecha&&r.fecha<=b.fecha;}).reduce(function(s,r){return s+(+r.kg||0);},0);if(!cons)return null;
+  var out=regs('movimiento',l.id).filter(function(m){return m.fecha>=a.fecha&&m.fecha<=b.fecha&&m.kg&&m.tipoM!=='Muerte';}).reduce(function(s,m){return s+(+m.kg||0);},0);
+  var gan=(+b.kg)+out-(+a.kg);if(gan<=0)return null;return {ca:cons/gan,cons:cons,gan:gan};}
+var esDueno=true;function actualizarRol(){esDueno=miRol()==='Administrador';}
+function cabezasLote(l){var out=regs('movimiento',l.id).reduce(function(s,m){return s+(+m.cabezas||0);},0);return (+l.cabezas||0)-out;}
+
+function infoPesoCerda(c){var p=ultimoPeso(c.id);if(!p||!c.nac)return null;var d=edadDias(c.nac,parse(p.fecha));var ev=evalPeso(+p.kg,d);ev.kg=+p.kg;ev.fecha=p.fecha;return ev;}
+function pesoCerda(c){var p=infoPesoCerda(c);if(p){p.estimado=false;return p;}if(!c.nac)return null;var d=edadDias(c.nac);var e=pesoEsperado(d);return {kg:e,esp:e,ratio:1,estado:'Normal',estimado:true,fecha:iso(today())};}
+function pesoLote(l){var p=infoPesoLote(l);if(p){p.estimado=false;return p;}if(!l.nac)return null;var d=edadDias(l.nac);var e=pesoEsperado(d);return {kg:e,esp:e,ratio:1,estado:'Normal',estimado:true,dias:d,fecha:iso(today())};}
+function racionCerda(c){
+  var st=estadoCerda(c),pe=infoPesoCerda(c),r={etapa:'',a:'',kg:0,nota:''};
+  var ed=edadDias(c.nac);
+  if(st.e==='Fuera')return r;
+  var M=MAD();
+  if(st.e==='Gestante'){r.a=M.a;if(st.dia<=84){r.etapa='Gestación 1 (día 1–84)';r.kg=M.gest1;}else{r.etapa='Gestación 2 (día 85–114)';r.kg=M.gest2;}}
+  else if(st.e==='Lactante'){var n=lechonesLactando(st.ciclo);r.a=M.a;r.etapa='Lactancia con '+n+' lechones';r.kg=Math.min(7.5,Math.max(4,M.lactBase+M.lactLechon*n));}
+  else if(st.e==='Vacía'){r.a=M.a;r.etapa='Vacía, esperando celo';r.kg=M.vacia;r.nota='Un poco más de comida (flushing) ayuda a que entre en celo.';}
+  else if(st.e==='Relevo'){if(ed!=null&&ed<=213){var nm=normaEdad(ed);r.a=nm.a;r.etapa='Relevo · '+nm.e;r.kg=nm.kg;}else{r.a=M.a;r.etapa='Relevo, preparando primer servicio';r.kg=M.relevo;}}
+  else if(st.e==='Descarte'){r.a=M.a;r.etapa='Descarte';r.kg=M.descarte;}
+  if(pe&&(st.e==='Gestante'||st.e==='Vacía'||st.e==='Relevo')){
+    if(pe.estado==='Bajo'){r.kg+=0.3;r.nota='Peso bajo para su edad: se suben 300 g diarios.';}
+    else if(pe.estado==='Alto'&&st.e==='Gestante'){r.kg-=0.2;r.nota='Peso alto para su edad: se bajan 200 g diarios.';}
+  }
+  r.kg=Math.round(r.kg*100)/100;return r;
+}
+function racionLote(l){
+  var cab=cabezasLote(l),ed=edadDias(l.nac);if(l.estado==='Cerrado'||cab<=0||ed==null)return {etapa:'',a:'',kgA:0,kg:0,cab:cab,ed:ed};
+  var nm=normaEdad(ed),a=nm.a,et=nm.e,pr=infoPesoLote(l);
+  if(pr&&ed>=LACT&&!(S.config&&S.config.normas)){for(var i=0;i<POR_PESO.length;i++)if(pr.kg>=POR_PESO[i][0]){if(POR_PESO[i][1]!==a){a=POR_PESO[i][1];et=a+' (por peso: '+n1(pr.kg)+' kg promedio)';}break;}}
+  return {etapa:et,a:a,kgA:nm.kg,kg:Math.round(nm.kg*cab*100)/100,cab:cab,ed:ed};
+}
+function infoPesoLote(l){var p=ultimoPeso(l.id);if(!p||!l.nac||!(+p.cabezas))return null;var avg=+p.kg/+p.cabezas,d=edadDias(l.nac,parse(p.fecha));var ev=evalPeso(avg,d);ev.kg=avg;ev.fecha=p.fecha;ev.dias=d;return ev;}
+
+/* agenda de una cerda */
+function eventosCerda(c){
+  var st=estadoCerda(c),ev=[],u=st.ciclo;
+  if(st.e==='Fuera'||st.e==='Descarte')return ev;
+  if(st.e==='Gestante'){var s=parse(u.servicio);
+    var coli=regs('sanidad',c.id).filter(function(r){return /coli/i.test(r.producto||'')&&r.fecha>=u.servicio;}).length;
+    var desp=regs('sanidad',c.id).filter(function(r){return r.tipoS==='Desparasitante'&&r.fecha>=u.servicio;}).length;
+    ev.push({t:'Revisar si repite celo',d:add(s,18),k:'celo'});
+    if(u.resultado!=='Preñada')ev.push({t:'Ecografía de confirmación',d:add(s,25),k:'eco'});
+    ev.push({t:'Vacuna E. coli · 1.ª dosis',d:add(s,70),k:'coli1',hecho:coli>=1});
+    ev.push({t:'Vacuna E. coli · 2.ª dosis',d:add(s,95),k:'coli2',hecho:coli>=2});
+    ev.push({t:'Desparasitar',d:add(s,100),k:'desp',hecho:desp>=1});
+    ev.push({t:'Pasar a paridera',d:add(s,107),k:'paridera'});
+    ev.push({t:'Parto estimado',d:add(s,GEST),k:'parto'});
+  }
+  if(st.e==='Lactante'){var p=parse(u.parto);
+    ev.push({t:'Hierro a los lechones',d:add(p,3),k:'hierro',hecho:sanCount(c.id,'Hierro',u.parto)>0});
+    var sc=sexoCamada(u);if(!sc||sc.m>0)ev.push({t:'Castrar machos',d:add(p,7),k:'castra',hecho:sanCount(c.id,'Castración',u.parto)>0});
+    ev.push({t:'Vacunar lechones (Mycoplasma / Circovirus)',d:add(p,21),k:'vaclech',hecho:regs('sanidad',c.id).filter(function(r){return r.tipoS==='Vacuna'&&r.fecha>=iso(add(p,10));}).length>0});
+    ev.push({t:'Destete',d:add(p,LACT),k:'destete'});
+  }
+  if(st.e==='Vacía'){
+    if(st.desde==='destete'){ev.push({t:'Celo esperado (servir)',d:add(parse(u.destete),5),k:'servir'});}
+    else if(st.desde==='repitio'){var s2=parse(u.servicio),k=1;while(add(s2,21*k)<add(today(),-2))k++;ev.push({t:'Celo esperado (servir)',d:add(s2,21*k),k:'servir'});}
+  }
+  return ev;
+}
+function proximosEventos(dias){
+  var out=[],t=today(),lim=add(t,dias),desde=add(t,-3);
+  cerdas().forEach(function(c){eventosCerda(c).forEach(function(e){if(!e.hecho&&e.d>=desde&&e.d<=lim)out.push({act:'cerda',id:c.id,quien:c.codigo+' · '+(c.nombre||''),e:e});});});
+  lotes().forEach(function(l){eventosLote(l).forEach(function(e){if(!e.hecho&&e.d>=desde&&e.d<=lim)out.push({act:'lote',id:l.id,quien:'Lote '+l.codigo,e:e});});});
+  regs('sanidad').forEach(function(r){if(r.proxima&&enGranja(r)){var d=parse(r.proxima);if(d>=desde&&d<=lim){var es=S.cerdas[r.ref]?'cerda':(S.lotes[r.ref]?'lote':'');var who=es==='cerda'?S.cerdas[r.ref].codigo:(es==='lote'?'Lote '+S.lotes[r.ref].codigo:'');out.push({act:es,id:r.ref,quien:who,e:{t:'Próxima dosis: '+(r.producto||r.tipoS),d:d}});}}});
+  return out.sort(function(a,b){return a.e.d-b.e.d;});
+}
+function evItem(x){return '<button class="item" '+(x.act?'data-act="'+x.act+'" data-id="'+x.id+'"':'')+'><span class="t">'+esc(x.e.t)+'</span><span class="r">'+fd(x.e.d)+'</span><span class="s">'+esc(x.quien)+' · '+rel(x.e.d)+'</span></button>';}
+function cuandoInseminar(){
+  var out=[],t=today();
+  cerdas().forEach(function(c){
+    var st=estadoCerda(c),ed=edadDias(c.nac),pe=pesoCerda(c);
+    if(st.e==='Vacía'){var e=eventosCerda(c)[0];
+      out.push({c:c,d:e?e.d:t,txt:e?(st.desde==='destete'?'4 a 7 días después del destete':'21 días después del último servicio'):'Vigilar celo mañana y tarde',pri:1});}
+    else if(st.e==='Relevo'){
+      var faltaD=ed==null?null:EDMIN-ed, okP=pe&&pe.kg>=PESMIN;
+      if(ed!=null&&faltaD<=0&&okP)out.push({c:c,d:t,txt:'Lista: servir en el próximo celo'+(pe.estimado?' (peso estimado; confírmalo pesándola)':''),pri:0});
+      else{var d=ed==null?null:add(t,Math.max(0,faltaD));out.push({c:c,d:d,txt:(ed==null?'Falta fecha de nacimiento':(faltaD>0?'Cumple edad el '+fd(d):'Ya tiene la edad'))+(pe?(okP?'':' · '+(pe.estimado?'~':'')+n0(pe.kg)+' kg de '+PESMIN+(pe.estimado?' (estimado)':'')):''),pri:2});}
+    }
+    else if(st.e==='Gestante'){var p=add(parse(st.ciclo.servicio),GEST);out.push({c:c,d:add(p,LACT+5),txt:'Después del parto ('+fd(p)+') y destete',pri:3});}
+    else if(st.e==='Lactante'){out.push({c:c,d:add(parse(st.ciclo.parto),LACT+5),txt:'Después del destete',pri:3});}
+  });
+  return out.sort(function(a,b){return a.pri-b.pri||((a.d||0)-(b.d||0));});
+}
+function recomendacionCerda(c){
+  var cs=ciclosDe(c.id),partos=cs.filter(function(x){return x.parto;}),rep=cs.filter(function(x){return x.resultado==='Repitió';}).length;
+  var pv=partos.length?partos.reduce(function(s,x){return s+(+x.vivos||0);},0)/partos.length:null;
+  if(c.estadoFicha==='Descarte')return {t:'Programar la venta',k:'warn'};
+  if(partos.length>=PMAX)return {t:'Evaluar descarte: ya tiene '+partos.length+' partos',k:'warn'};
+  if(partos.length>=2&&pv<8)return {t:'Evaluar descarte: camadas pequeñas ('+n1(pv)+' vivos en promedio)',k:'warn'};
+  if(rep>=2)return {t:'Evaluar descarte: ha repetido celo '+rep+' veces',k:'warn'};
+  return null;
+}
+
+/* alimento */
+function presupuesto(){
+  var m={};TIPOS.forEach(function(t){m[t]={dia:0,grupos:[]};});
+  cerdas().forEach(function(c){var st=estadoCerda(c);if(st.e==='Lactante'){var nl=lechonesLactando(st.ciclo);var nm0=normaEdad(Math.max(0,st.dia-1));if(nl>0&&st.dia>=7&&m[nm0.a]){m[nm0.a].dia+=nm0.kg*nl;m[nm0.a].grupos.push({ref:c.id,n:'Camada de '+c.codigo+' · '+nl+' lechones',kg:Math.round(nm0.kg*nl*100)/100,neg:'Cría',granja:c.granja});}}});
+  cerdas().forEach(function(c){var r=racionCerda(c);if(r.kg>0){m[r.a].dia+=r.kg;m[r.a].grupos.push({ref:c.id,n:c.codigo+' · '+(c.nombre||''),kg:r.kg,neg:'Cría',granja:c.granja});}});
+  lotes().forEach(function(l){var r=racionLote(l);if(r.kg>0){m[r.a].dia+=r.kg;m[r.a].grupos.push({ref:l.id,n:l.codigo+' · '+r.cab+' cerdos',kg:r.kg,neg:l.negocio,granja:l.granja});}});
+  return m;
+}
+function inventario(){
+  var m={};TIPOS.forEach(function(t){m[t]={kg:0,valor:0,kgAll:0,valAll:0,cons:0,real7:0};});
+  var t7=iso(add(today(),-6));
+  regs('compra').forEach(function(r){var kg=(+r.bultos||0)*(+r.kgBulto||KGB);if(!m[r.alimento])return;m[r.alimento].kgAll+=kg;m[r.alimento].valAll+=(+r.valor||0);if(enGranja(r)){m[r.alimento].kg+=kg;m[r.alimento].valor+=(+r.valor||0);}});
+  regs('consumo').forEach(function(r){if(!m[r.alimento]||!enGranja(r))return;m[r.alimento].cons+=(+r.kg||0);if(r.fecha>=t7)m[r.alimento].real7+=(+r.kg||0);});
+  TIPOS.forEach(function(t){var x=m[t];x.stock=x.kg-x.cons;x.costoKg=x.kgAll?x.valAll/x.kgAll:0;});
+  return m;
+}
+function necesidadCamadas(){
+  var m={};TIPOS.forEach(function(t){m[t]=0;});
+  cerdas().forEach(function(c){var st=estadoCerda(c);if(st.e!=='Gestante')return;
+    var M=MAD();m[M.a]+=(M.lactBase+M.lactLechon*LECH)*LACT;NORMAS().forEach(function(nm){var d1=Math.min(nm.d1,213);m[nm.a]+=nm.kg*(d1-nm.d0+1)*LECH;});});
+  return m;
+}
+
+/* ============ interfaz ============ */
+var ICON={
+ inicio:'<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>',
+ cerdas:'<path d="M5 12c0-4 3-6 7-6s7 2 7 6-3 6-7 6-7-2-7-6z"/><circle cx="12" cy="13" r="2"/><path d="M7 7L5 4M17 7l2-3"/>',
+ lotes:'<rect x="3" y="7" width="18" height="12" rx="2"/><path d="M3 11h18M8 7V4h8v3"/>',
+ alimento:'<path d="M6 3h12l-1 18H7z"/><path d="M6 8h12"/>',
+ mas:'<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>'};
+var TABS=[['inicio','Inicio'],['cerdas','Cerdas'],['lotes','Lotes'],['alimento','Alimento'],['mas','Más']];
+function chipEstado(e){var m={Gestante:'c-gest',Lactante:'c-lact','Vacía':'c-vacia',Relevo:'c-ok',Descarte:'c-bad',Fuera:'c-mut'};return '<span class="chip '+(m[e]||'c-mut')+'">'+esc(e)+'</span>';}
+function chipPeso(p){if(!p)return '<span class="chip c-mut">Sin peso</span>';if(p.estimado)return '<span class="chip c-mut">Peso estimado</span>';var k=p.estado==='Normal'?'c-ok':(p.estado==='Bajo'?'c-bad':'c-vacia');return '<span class="chip '+k+'">Peso '+p.estado.toLowerCase()+'</span>';}
+
+function renderBar(){
+  var b=document.getElementById('bar'),title,h='<div class="bar-in">';
+  if(ui.det){h+='<button class="back" data-act="back" aria-label="Volver">‹</button>';}
+  if(ui.det&&ui.det.t==='cerda'){var c=S.cerdas[ui.det.id];title=c?(c.codigo+' · '+(c.nombre||'')):'Cerda';}
+  else if(ui.det&&ui.det.t==='lote'){var l=S.lotes[ui.det.id];title=l?('Lote '+l.codigo):'Lote';}
+  else if(ui.det&&ui.det.t==='rep'){title={cuenta:'Mi cuenta',indicadores:'Indicadores',parideras:'Parideras',cobrar:'Cuentas por cobrar',hato:'Valor del hato',usuarios:'Usuarios',raciones:'Raciones y alimentos',inseminar:'¿Cuándo inseminar?',agenda:'Agenda',costos:'Costos y resultados',granjas:'Granjas',historial:'Registros'}[ui.det.id]||'Reporte';}
+  else title={inicio:'Pig App',cerdas:'Cerdas',lotes:'Lotes',alimento:'Alimento',mas:'Más'}[ui.tab];
+  h+='<h1>'+esc(title)+'</h1>';
+  var gs=granjas();
+  if(!ui.det&&gs.length){h+='<button class="farm" data-act="pickfarm">'+esc(ui.granja==='todas'?(gs.length>1?'Todas las granjas':gs[0].nombre):nombreG(ui.granja))+' ▾</button>';}
+  h+='<span class="sync" id="sync" data-act="sync" role="button" tabindex="0"></span></div>';
+  b.innerHTML=h;syncLabel();
+}
+function renderTabs(){document.getElementById('tabs').innerHTML=TABS.map(function(t){return '<button class="tab" data-tab="'+t[0]+'"'+(ui.tab===t[0]&&!ui.det?' aria-current="page"':'')+'><svg viewBox="0 0 24 24" aria-hidden="true">'+ICON[t[0]]+'</svg>'+t[1]+'</button>';}).join('');}
+
+function render(){
+  actualizarRol();
+  var m=document.getElementById('main'),h,fab=document.getElementById('fab'),tabs=document.querySelector('.tabs');
+  var listo=AUTH.email&&tieneBase();fab.hidden=!listo||miRol()==='Consulta';tabs.hidden=!listo;
+  if(!AUTH.email){document.getElementById('bar').innerHTML='';var ult='';try{ult=localStorage.getItem('pigapp-lastemail')||'';}catch(e){}
+    m.innerHTML='<form class="login" id="loginform" novalidate><img src="icons/icon-192.png" alt=""><h1>Pig App</h1><p class="note">Cerdas, lotes, alimento y costos de tu granja.</p>'+
+      '<div class="field" style="width:100%;max-width:340px;text-align:left"><label for="loginemail">Tu correo</label><input id="loginemail" type="email" inputmode="email" autocomplete="email" placeholder="tucorreo@gmail.com" value="'+esc(ult)+'"><span class="err" id="loginerr"></span><small>Funciona con Gmail y con Outlook o Hotmail.</small></div>'+
+      '<button class="btn pri" type="submit" style="width:100%;max-width:340px;padding:13px">Entrar</button><div id="loginpick" hidden style="width:100%;max-width:340px;display:flex;flex-direction:column;gap:8px"><p class="note">¿Con qué cuenta es ese correo?</p><button class="gbtn" type="button" data-act="login"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#4285F4" d="M44 24c0-1.3-.1-2.4-.4-3.5H24v8h11.3c-.5 2.6-2 4.8-4.2 6.3l6.2 5.2C41.4 36.4 44 30.7 44 24z"/><path fill="#34A853" d="M24 44c5.4 0 10-1.8 13.3-4.9l-6.2-5.2c-1.8 1.2-4.2 2-7.1 2-5.2 0-9.6-3.5-11.2-8.3l-6.4 5C9.6 39.4 16.3 44 24 44z"/><path fill="#FBBC05" d="M12.8 27.6c-.4-1.2-.6-2.4-.6-3.6s.2-2.5.6-3.6l-6.4-5C5 18.1 4 21 4 24s1 5.9 2.4 8.6l6.4-5z"/><path fill="#EA4335" d="M24 12c3 0 5.6 1 7.7 3l5.8-5.8C34 6 29.4 4 24 4 16.3 4 9.6 8.6 6.4 15.4l6.4 5C14.4 15.6 18.8 12 24 12z"/></svg>Cuenta de Google</button><button class="gbtn" type="button" data-act="loginms"><svg viewBox="0 0 23 23" aria-hidden="true"><path fill="#f35325" d="M1 1h10v10H1z"/><path fill="#81bc06" d="M12 1h10v10H12z"/><path fill="#05a6f0" d="M1 12h10v10H1z"/><path fill="#ffba08" d="M12 12h10v10H12z"/></svg>Cuenta de Microsoft</button></div>'+
+      (CFG.clientId||CFG.msClientId?'':'<div class="alert warn" style="max-width:340px">Esta copia no tiene configurados los ID de Google y Microsoft: entrarás en modo de prueba, con los datos guardados solo en este celular.</div>')+
+      '<p class="note">La primera vez Google o Microsoft te piden confirmar la cuenta. Después la app entra sola.</p></form>';
+    var fm=document.getElementById('loginform');fm.onsubmit=function(ev){ev.preventDefault();continuarCorreo(document.getElementById('loginemail').value);};
+    document.getElementById('loginemail').oninput=function(){document.getElementById('loginerr').textContent='';document.getElementById('loginpick').hidden=true;};
+    return;}
+  if(!tieneBase()){document.getElementById('bar').innerHTML='<div class="bar-in"><h1>Pig App</h1></div>';m.innerHTML='<div class="card"><h2>Hola'+(AUTH.name?', '+esc(AUTH.name.split(' ')[0]):'')+'</h2><p class="note">Entraste como '+esc(AUTH.email)+'. Elige cómo empezar:</p><button class="btn pri wide" data-act="crearbase">Crear mi granja nueva</button><p class="note">'+(PROV==='ms'?'Crea en tu OneDrive, en la carpeta Pig App, el Excel "Pig App - Base de datos", donde quedará toda la información.':'Crea en tu Google Drive la hoja "Pig App · Base de datos", donde quedará toda la información.')+'</p></div><div class="card"><h2>Unirme a una granja</h2><p class="note">Si el dueño ya te agregó como usuario, pega aquí '+(PROV==='ms'?'el código de la granja (empieza por PIGMS:)':'el enlace de la base de datos')+' que te compartió.</p><div class="field"><label for="joinlink">'+(PROV==='ms'?'Código de la granja':'Enlace de la hoja')+'</label><input id="joinlink" placeholder="'+(PROV==='ms'?'PIGMS:…':'https://docs.google.com/spreadsheets/d/…')+'"></div><button class="btn wide" data-act="unirse">Conectar</button></div><button class="btn wide" data-act="logout">Usar otra cuenta</button>';return;}
+  renderBar();renderTabs();
+  if(!granjas().length){m.innerHTML='<div class="card empty"><h2>Crea tu primera granja</h2><p class="note">Después agregas las cerdas y la app calcula sola la comida, las fechas y las alertas.</p><button class="btn pri" data-act="newfarm">Crear granja</button>'+(miRol()==='Administrador'?'<button class="btn" data-act="importar">Importar El Progreso (5 cerdas y 2 servicios)</button>':'')+(lastSync?'':'<p class="note">Si la granja ya tiene datos, espera a que sincronice.</p>')+'</div>';return;}
+  if(ui.det)h=ui.det.t==='cerda'?vCerda(ui.det.id):(ui.det.t==='lote'?vLote(ui.det.id):vRep(ui.det.id));
+  else h={inicio:vInicio,cerdas:vCerdas,lotes:vLotes,alimento:vAlimento,mas:vMas}[ui.tab]();
+  m.innerHTML=h;
+}
+
+/* ---- vistas ---- */
+function vInicio(){
+  var cs=cerdas(),cnt={Gestante:0,Lactante:0,'Vacía':0,Relevo:0};
+  cs.forEach(function(c){var e=estadoCerda(c).e;if(cnt[e]!=null)cnt[e]++;});
+  var lt=lotes(),cria=0,eng=0;lt.forEach(function(l){var n=cabezasLote(l);if(l.negocio==='Engorde')eng+=n;else cria+=n;});
+  cs.forEach(function(c){var st=estadoCerda(c);if(st.e==='Lactante')cria+=lechonesLactando(st.ciclo);});
+  var h='<div class="card"><div class="card-h"><span class="label">Hato</span><span class="note">'+cs.length+' hembras · '+(cria+eng)+' cerdos</span></div><div class="stats">';
+  [['Gestante','Gestantes'],['Lactante','Lactantes'],['Vacía','Vacías'],['Relevo','Relevos']].forEach(function(x){h+='<button class="stat" data-act="filtro" data-v="'+x[0]+'"><b>'+cnt[x[0]]+'</b><span>'+x[1]+'</span></button>';});
+  h+='</div><div class="stats"><button class="stat" data-tab="lotes"><b>'+cria+'</b><span>Lechones</span></button><button class="stat" data-tab="lotes"><b>'+eng+'</b><span>En engorde</span></button>';
+  var parto30=cs.filter(function(c){var st=estadoCerda(c);if(st.e!=='Gestante')return false;var p=add(parse(st.ciclo.servicio),GEST);return diff(today(),p)<=30;}).length;
+  h+='<button class="stat" data-act="rep" data-v="agenda"><b>'+parto30+'</b><span>Partos 30 días</span></button><button class="stat" data-act="rep" data-v="inseminar"><b>'+cuandoInseminar().filter(function(x){return x.pri<=1;}).length+'</b><span>Para servir</span></button></div></div>';
+  // alertas
+  var al=[],pre=presupuesto(),inv=inventario();
+  TIPOS.forEach(function(t){var p=pre[t].dia;if(p<=0)return;var dias=Math.max(0,inv[t].stock)/p;if(dias<COBMIN)al.push({k:'bad',t:t+': '+(inv[t].stock<=0?'sin inventario':'alcanza '+n0(dias)+' días')+'. Compra '+Math.ceil((p*COBOBJ-Math.max(0,inv[t].stock))/KGB)+' bultos.'});else if(dias<COBOBJ)al.push({k:'warn',t:t+': alcanza '+n0(dias)+' días (hasta '+fd(add(today(),Math.floor(dias)))+').'});});
+  cs.forEach(function(c){var p=infoPesoCerda(c);if(p&&p.estado!=='Normal')al.push({k:'warn',t:c.codigo+' tiene peso '+p.estado.toLowerCase()+' para su edad ('+n0(p.kg)+' kg; se esperan '+n0(p.esp)+').',det:c.id});var r=recomendacionCerda(c);if(r)al.push({k:'warn',t:c.codigo+': '+r.t,det:c.id});});
+  lt.forEach(function(l){if((l.negocio||'Cría')!=='Cría'||!l.nac)return;var ed=edadDias(l.nac);if(ed>=200&&cabezasLote(l)>0)al.push({k:'warn',t:'Lote '+l.codigo+(ed>=213?' ya tiene 7 meses':' cumple 7 meses el '+fd(add(parse(l.nac),213)))+': selecciona las hembras para madres.'});});
+  cs.concat(lt).forEach(function(o){var rt=retiroHasta(o.id);if(rt)al.push({k:'bad',t:(o.cabezas!=null&&S.lotes[o.id]?'Lote ':'')+o.codigo+' en retiro de medicamento hasta el '+fd(rt)+': no vender ni sacrificar.'});});
+  var po=ocupacionParideras(8).filter(function(w){return w.cap&&w.n>w.cap;});if(po.length)al.push({k:'bad',t:'La semana del '+fd(po[0].d)+' se necesitan '+po[0].n+' parideras y hay '+po[0].cap+'.'});
+  lt.forEach(function(l){var p=infoPesoLote(l);if(p&&p.estado==='Bajo')al.push({k:'warn',t:'Lote '+l.codigo+' va bajo de peso ('+n1(p.kg)+' kg promedio; se esperan '+n1(p.esp)+').'});});
+  if(al.length){h+='<div class="card"><span class="label">Alertas</span>'+al.slice(0,8).map(function(a){return '<div class="alert '+a.k+'"'+(a.det?' data-act="cerda" data-id="'+a.det+'" style="cursor:pointer"':'')+'>'+esc(a.t)+'</div>';}).join('')+'</div>';}
+  // comida de hoy
+  var tot=0;TIPOS.forEach(function(t){tot+=pre[t].dia;});
+  h+='<div class="card"><div class="card-h"><span class="label">Comida de hoy</span><span class="note">'+n1(tot*7)+' kg/semana</span></div><div class="big">'+n1(tot)+' kg</div>';
+  h+='<div class="list">'+TIPOS.filter(function(t){return pre[t].dia>0;}).map(function(t){return '<div class="item static"><span class="t">'+t+'</span><span class="r">'+n1(pre[t].dia)+' kg · '+n1(pre[t].dia/KGB)+' bultos</span></div>';}).join('')+'</div>';
+  h+='<button class="btn pri wide" data-act="racion">Registrar la comida de hoy</button></div>';
+  // próximos eventos
+  var ev=proximosEventos(14);
+  h+='<div class="card"><div class="card-h"><span class="label">Próximos 14 días</span><button class="btn" data-act="rep" data-v="agenda">Ver agenda</button></div>';
+  h+=ev.length?'<div class="list">'+ev.slice(0,6).map(evItem).join('')+'</div>':'<p class="note">Nada pendiente en estos días.</p>';
+  h+='</div>';
+  return h;
+}
+function vCerdas(){
+  var cs=cerdas(),f=ui.filtro;
+  var h='<div class="seg">'+[['todas','Todas'],['Gestante','Gestantes'],['Lactante','Lactantes'],['Vacía','Vacías'],['Relevo','Relevos'],['Descarte','Descarte']].map(function(x){return '<button data-act="filtro" data-v="'+x[0]+'" aria-pressed="'+(f===x[0])+'">'+x[1]+'</button>';}).join('')+'</div>';
+  var list=cs.map(function(c){return {c:c,st:estadoCerda(c)};}).filter(function(x){return f==='todas'||x.st.e===f;});
+  if(!list.length)return h+'<div class="card empty"><p class="note">No hay cerdas en este grupo.</p><button class="btn pri" data-act="newcerda">Agregar cerda</button></div>';
+  h+='<div class="card"><div class="list">'+list.map(function(x){var c=x.c,st=x.st,r=racionCerda(c),p=infoPesoCerda(c);
+    var sub=st.e==='Gestante'?'Día '+st.dia+' de gestación':(st.e==='Lactante'?'Día '+st.dia+' de lactancia':(c.nac?n1(edadDias(c.nac)/30.4)+' meses':''));
+    return '<button class="item" data-act="cerda" data-id="'+c.id+'"><span class="t">'+esc(c.codigo)+' · '+esc(c.nombre||'')+'</span>'+chipEstado(st.e)+'<span class="s">'+sub+(r.kg?' · '+n1(r.kg)+' kg/día de '+r.a.toLowerCase():'')+' · '+(p?n0(p.kg)+' kg, peso '+p.estado.toLowerCase():(c.nac?'~'+n0(pesoEsperado(edadDias(c.nac)))+' kg estimado':'sin peso'))+(ui.granja==='todas'&&granjas().length>1?' · '+esc(nombreG(c.granja)):'')+'</span></button>';}).join('')+'</div></div>';
+  h+='<button class="btn wide" data-act="newcerda">+ Agregar cerda o relevo</button>';
+  return h;
+}
+function vCerda(id){
+  var c=S.cerdas[id];if(!c)return '<div class="card"><p class="note">Esta cerda ya no existe.</p></div>';
+  c=Object.assign({id:id},c);var st=estadoCerda(c),r=racionCerda(c),p=pesoCerda(c),ed=edadDias(c.nac),rec=recomendacionCerda(c);
+  var h='<div class="card"><div class="card-h"><div>'+chipEstado(st.e)+' '+(c.tipo==='Relevo'?'<span class="chip c-mut">Relevo</span>':'')+'</div><span class="note">'+esc(nombreG(c.granja))+'</span></div>';
+  if(st.e==='Gestante'){var pct=Math.min(100,st.dia/GEST*100);h+='<div><div class="card-h"><b>Día '+st.dia+' de '+GEST+'</b><span class="note">Parto ~ '+fd(add(parse(st.ciclo.servicio),GEST))+'</span></div><div class="meter"><i style="width:'+pct.toFixed(1)+'%"></i></div></div>';}
+  if(st.e==='Lactante')h+='<p class="note">Día '+st.dia+' de lactancia · destete '+fd(add(parse(st.ciclo.parto),LACT))+'</p>';
+  var rtc=retiroHasta(id);if(rtc)h+='<div class="alert bad">En retiro de medicamento hasta el '+fd(rtc)+': no vender ni sacrificar.</div>';
+  if(st.e==='Lactante'){var u=st.ciclo,nl=lechonesLactando(u),pn=u.pesosNac||[];var pc=regs('pesaje',u.id),ult=pc[pc.length-1],sx=sexoCamada(u);
+    h+='</div><div class="card"><div class="card-h"><span class="label">Camada con la madre</span><span class="chip c-lact">'+nl+' lechones</span></div><dl class="kv"><dt>Nacidos vivos</dt><dd>'+(u.vivos||0)+'</dd>'+(sx?'<dt>Machos · hembras</dt><dd>'+sx.m+' · '+sx.h+'</dd>':'')+'<dt>Muertos en lactancia</dt><dd>'+(u.muertesLact||0)+'</dd>'+((u.adoptEntran||u.adoptSalen)?'<dt>Adopciones</dt><dd>+'+(u.adoptEntran||0)+' / −'+(u.adoptSalen||0)+'</dd>':'')+(pn.length?'<dt>Peso al nacer</dt><dd>'+n1(pn.reduce(function(a,x){return a+x;},0)/pn.length)+' kg promedio</dd>':'')+(ult?'<dt>Último pesaje</dt><dd>'+n1(ult.kg/ult.cabezas)+' kg · '+fd(ult.fecha)+'</dd>':'')+'</dl><p class="note">Se quedan con la madre hasta el destete; ahí se forma el lote.</p><div class="acts"><button class="btn" data-act="muertelech" data-id="'+id+'">Murió un lechón</button><button class="btn" data-act="pesarcamada" data-id="'+id+'">Pesar camada</button><button class="btn" data-act="adopcion" data-id="'+id+'">Adopción</button></div>';}
+  if(rec)h+='<div class="alert warn">'+esc(rec.t)+'</div>';
+  h+='<dl class="kv"><dt>Raza</dt><dd>'+esc(c.raza||'—')+'</dd><dt>Nacimiento</dt><dd>'+fd(c.nac)+(ed!=null?' · '+n1(ed/30.4)+' meses':'')+'</dd><dt>Origen</dt><dd>'+esc(c.origen||'—')+'</dd><dt>Partos</dt><dd>'+ciclosDe(id).filter(function(x){return x.parto;}).length+'</dd></dl></div>';
+  // ración
+  if(r.kg){h+='<div class="card"><div class="card-h"><span class="label">Comida que le toca</span><span class="chip c-mut">'+esc(r.a)+'</span></div><p class="note">'+esc(r.etapa)+'</p><div class="ration"><div><b>'+n1(r.kg)+'</b><span>kg al día</span></div><div><b>'+n1(r.kg/2)+'</b><span>kg por comida (2)</span></div><div><b>'+n1(r.kg*7)+'</b><span>kg a la semana</span></div></div>'+(r.nota?'<p class="note">'+esc(r.nota)+'</p>':'')+'</div>';}
+  // peso
+  h+='<div class="card"><div class="card-h"><span class="label">Peso para la edad</span>'+chipPeso(p)+'</div>';
+  if(p&&p.estimado){h+='<div class="card-h"><span class="big">~'+n0(p.kg)+' kg</span><span class="note">Estimado para<br>'+n1(ed/30.4)+' meses</span></div><p class="note">No tiene pesaje, así que la app usa este peso estimado para sus cálculos. Cuando la peses, se reemplaza por el real.</p>';}
+  else if(p){var w=Math.min(100,p.ratio/1.4*100);h+='<div class="card-h"><span class="big">'+n0(p.kg)+' kg</span><span class="note">Se esperan '+n0(p.esp)+' kg<br>pesada '+fd(p.fecha)+'</span></div><div class="meter"><i style="width:'+w.toFixed(0)+'%;background:var(--'+(p.estado==='Normal'?'ok':(p.estado==='Bajo'?'bad':'warn'))+')"></i></div><p class="note">Normal entre '+n0(p.esp*0.85)+' y '+n0(p.esp*1.15)+' kg.'+(st.e==='Relevo'?' Para el primer servicio: '+PESMIN+' kg y '+Math.round(EDMIN/30.4*10)/10+' meses.':'')+'</p>';}
+  else h+='<p class="note">'+(c.nac?'Pésala para saber si va bien para su edad. A los '+n1(ed/30.4)+' meses debería pesar cerca de '+n0(pesoEsperado(ed))+' kg.':'Agrega la fecha de nacimiento para comparar el peso.')+'</p>';
+  h+='</div>';
+  // agenda
+  var ev=eventosCerda(c);
+  if(ev.length){var t=today(),nx=ev.find(function(e){return !e.hecho&&e.d>=add(t,-1);});h+='<div class="card"><span class="label">Agenda de este ciclo</span><div class="tl">'+ev.map(function(e){return '<div class="ev'+(e===nx?' next':'')+(e.hecho||e.d<add(t,-1)?' past':'')+'"><span class="d">'+fd(e.d)+'</span><span>'+esc(e.t)+(e.hecho?' ✓':'')+'</span></div>';}).join('')+'</div></div>';}
+  // acciones
+  h+='<div class="card"><span class="label">Registrar</span><div class="acts">';
+  if(st.e==='Vacía'||st.e==='Relevo')h+='<button class="btn pri" data-act="servicio" data-id="'+id+'">Servicio</button>';
+  if(st.e==='Gestante'){h+='<button class="btn pri" data-act="parto" data-id="'+id+'">Parto</button>';if(st.ciclo.resultado!=='Preñada')h+='<button class="btn" data-act="preñada" data-id="'+id+'">Confirmar preñez</button>';h+='<button class="btn" data-act="repitio" data-id="'+id+'">Repitió celo</button><button class="btn" data-act="aborto" data-id="'+id+'">Aborto</button>';if(st.dia<=3&&!st.ciclo.servicio2)h+='<button class="btn" data-act="segunda" data-id="'+id+'">2.ª inseminación</button>';}
+  if(st.e==='Lactante')h+='<button class="btn pri" data-act="destete" data-id="'+id+'">Destete</button>';
+  h+='<button class="btn" data-act="pesar" data-id="'+id+'">Pesaje</button><button class="btn" data-act="sanidad" data-id="'+id+'">Vacuna o tratamiento</button><button class="btn" data-act="editcerda" data-id="'+id+'">Editar ficha</button>';
+  if(st.e!=='Fuera')h+='<button class="btn" data-act="baja" data-id="'+id+'">Dar de baja</button>';
+  h+='</div></div>';
+  // historial
+  var cs=ciclosDe(id).slice().reverse();
+  h+='<div class="card"><span class="label">Historial reproductivo</span>'+(cs.length?'<div class="list">'+cs.map(function(x,i){return '<div class="item static"><span class="t">Ciclo '+(cs.length-i)+' · servicio '+fd(x.servicio)+'</span><span class="r">'+esc(x.parto?'Parió':(x.resultado||''))+'</span><span class="s">'+(x.servicio2?'Doble servicio ('+fd(x.servicio2)+'). ':'')+(x.parto?'Parto '+fd(x.parto)+': '+(x.vivos||0)+' vivos, '+(x.muertos||0)+' muertos':'')+(x.destete?' · destete '+fd(x.destete)+': '+(x.destetados||0)+' lechones':'')+'</span></div>';}).join('')+'</div>':'<p class="note">Sin servicios registrados.</p>')+'</div>';
+  var hs=regs('sanidad',id).concat(regs('pesaje',id)).sort(function(a,b){return b.fecha.localeCompare(a.fecha);});
+  if(hs.length)h+='<div class="card"><span class="label">Sanidad y pesajes</span><div class="list">'+hs.slice(0,10).map(function(r){return '<div class="item static"><span class="t">'+esc(r.tipo==='pesaje'?'Pesaje: '+n0(r.kg)+' kg':((r.tipoS||'')+': '+(r.producto||'')))+'</span><span class="r">'+fd(r.fecha)+'</span></div>';}).join('')+'</div></div>';
+  return h;
+}
+function vLotes(){
+  var lt=lotes();
+  if(!lt.length)return '<div class="card empty"><h2>Sin lotes activos</h2><p class="note">Cada parto crea su lote automáticamente. También puedes crear un lote de engorde comprado.</p><button class="btn pri" data-act="newlote">Crear lote</button></div>';
+  var h='';['Cría','Engorde'].forEach(function(neg){var g=lt.filter(function(l){return (l.negocio||'Cría')===neg;});if(!g.length)return;
+    h+='<div class="card"><span class="label">'+neg+'</span><div class="list">'+g.map(function(l){var r=racionLote(l),p=pesoLote(l);return '<button class="item" data-act="lote" data-id="'+l.id+'"><span class="t">Lote '+esc(l.codigo)+' · '+r.cab+' cerdos</span>'+chipPeso(p)+'<span class="s">'+(r.ed!=null?r.ed+' días · ':'')+esc(r.etapa)+(r.kg?' · '+n1(r.kg)+' kg/día de '+r.a.toLowerCase():'')+'</span></button>';}).join('')+'</div></div>';});
+  h+='<button class="btn wide" data-act="newlote">+ Crear lote</button>';
+  return h;
+}
+function vLote(id){
+  var l=S.lotes[id];if(!l)return '<div class="card"><p class="note">Este lote ya no existe.</p></div>';
+  l=Object.assign({id:id},l);var r=racionLote(l),p=pesoLote(l),inv=inventario();
+  var madre=madresDe(l).map(function(m){return S.cerdas[m]?S.cerdas[m].codigo:'';}).filter(Boolean).join(' y ');
+  var h='<div class="card"><div class="card-h"><span class="chip c-mut">'+esc(l.negocio||'Cría')+'</span><span class="note">'+esc(nombreG(l.granja))+'</span></div><div class="card-h"><span class="big">'+r.cab+' cerdos</span><span class="note">'+(r.ed!=null?r.ed+' días de edad':'')+'</span></div>';
+  h+='<dl class="kv"><dt>Nacimiento</dt><dd>'+fd(l.nac)+'</dd>'+(madre?(madresDe(l).length>1?'<dt>Madres</dt>':'<dt>Madre</dt>')+'<dd>'+esc(madre)+'</dd>':'')+'<dt>Inició con</dt><dd>'+(l.cabezas||0)+' cerdos</dd>'+(sexoLote(l)?'<dt>Machos · hembras</dt><dd>'+sexoLote(l).m+' · '+sexoLote(l).h+'</dd>':'')+'<dt>Etapa</dt><dd>'+esc(r.etapa||'—')+'</dd></dl>';
+  var rtl=retiroHasta(id);if(rtl)h+='<div class="alert bad">En retiro de medicamento hasta el '+fd(rtl)+': no vender ni sacrificar.</div>';
+  h+='</div>';
+  var evl=eventosLote(l);if(evl.length){var tt=today(),nxl=evl.find(function(e){return !e.hecho&&e.d>=add(tt,-1);});h+='<div class="card"><span class="label">Agenda sanitaria del lote</span><div class="tl">'+evl.map(function(e){return '<div class="ev'+(e===nxl?' next':'')+(e.hecho||e.d<add(tt,-1)?' past':'')+'"><span class="d">'+fd(e.d)+'</span><span>'+esc(e.t)+(e.hecho?' ✓':'')+'</span></div>';}).join('')+'</div></div>';}
+  if(r.kg){h+='<div class="card"><div class="card-h"><span class="label">Comida del lote</span><span class="chip c-mut">'+esc(r.a)+'</span></div><p class="note">'+n1(r.kgA)+' kg por cerdo al día × '+r.cab+' cerdos</p><div class="ration"><div><b>'+n1(r.kg)+'</b><span>kg al día</span></div><div><b>'+n1(r.kg/2)+'</b><span>kg por comida (2)</span></div><div><b>'+n1(r.kg*7)+'</b><span>kg a la semana</span></div></div>';
+    var nx=NORMAS().find(function(n){return n.d0>r.ed;});if(nx)h+='<p class="note">El '+fd(add(parse(l.nac),nx.d0))+' pasa a '+nx.e.toLowerCase()+' ('+nx.a.toLowerCase()+', '+nx.kg+' kg por cerdo).</p>';h+='</div>';}
+  h+='<div class="card"><div class="card-h"><span class="label">Peso promedio para la edad</span>'+chipPeso(p)+'</div>';
+  if(p&&p.estimado){h+='<div class="card-h"><span class="big">~'+n1(p.kg)+' kg</span><span class="note">por cerdo, estimado<br>~'+n0(p.kg*r.cab)+' kg el lote</span></div><p class="note">Sin pesaje: se usa el peso estimado para '+r.ed+' días de edad. Al pesar cerdo por cerdo se reemplaza por el real.</p>';}
+  else if(p){var pw=regs('pesaje',id),gdp=null;if(pw.length>=2){var a=pw[pw.length-2],b=pw[pw.length-1];var dd=diff(parse(a.fecha),parse(b.fecha));if(dd>0)gdp=(b.kg/b.cabezas-a.kg/a.cabezas)/dd;}else if(l.nac){gdp=(p.kg-1.4)/Math.max(1,p.dias);}
+    h+='<div class="card-h"><span class="big">'+n1(p.kg)+' kg</span><span class="note">Se esperan '+n1(p.esp)+' kg<br>pesado '+fd(p.fecha)+'</span></div>';
+    if(gdp&&gdp>0){var falta=Math.max(0,105-p.kg),dv=Math.round(falta/gdp);h+='<p class="note">Gana '+n0(gdp*1000)+' g por día. '+(falta>0?'Llegaría a 105 kg cerca del '+fd(add(parse(p.fecha),dv))+'.':'Ya está en peso de venta.')+'</p>';}
+    var up=pw[pw.length-1];if(up&&up.pesos&&up.pesos.length){var cnt={Bajo:0,Normal:0,Alto:0};var lst=up.pesos.map(function(w,i){var st=w/p.esp<0.85?'Bajo':(w/p.esp>1.15?'Alto':'Normal');cnt[st]++;return {i:i+1,w:w,st:st};});
+      h+='<div class="stats" style="grid-template-columns:repeat(3,1fr)"><div class="stat"><b style="color:var(--bad)">'+cnt.Bajo+'</b><span>Bajos</span></div><div class="stat"><b style="color:var(--ok)">'+cnt.Normal+'</b><span>Normales</span></div><div class="stat"><b style="color:var(--warn)">'+cnt.Alto+'</b><span>Altos</span></div></div>';
+      h+='<p class="note">Más liviano '+n1(Math.min.apply(null,up.pesos))+' kg · más pesado '+n1(Math.max.apply(null,up.pesos))+' kg.'+(cnt.Bajo?' Separa los bajos o dales más comida para emparejar el lote.':'')+'</p>';
+      h+='<details><summary class="note">Peso de cada cerdo</summary><div class="list">'+lst.map(function(x){return '<div class="item static"><span class="t">Cerdo '+x.i+'</span><span class="r">'+n1(x.w)+' kg · <span style="color:var(--'+(x.st==='Normal'?'ok':(x.st==='Bajo'?'bad':'warn'))+')">'+x.st.toLowerCase()+'</span></span></div>';}).join('')+'</div></details>';}}
+  else h+='<p class="note">'+(r.ed!=null?'A los '+r.ed+' días cada cerdo debería pesar cerca de '+n1(pesoEsperado(r.ed))+' kg. Pésalos para comparar.':'')+'</p>';
+  h+='</div>';
+  // costos
+  var cAl=regs('consumo',id).reduce(function(s,x){return s+(+x.kg||0)*(inv[x.alimento]?inv[x.alimento].costoKg:0);},0);
+  var cSa=regs('sanidad',id).reduce(function(s,x){return s+(+x.valor||0);},0),cGa=regs('gasto',id).reduce(function(s,x){return s+(+x.valor||0);},0),cIn=+l.valor||0,tot=cAl+cSa+cGa+cIn;
+  var cv=conversionLote(l);
+  if(cv)h+='<div class="card"><div class="card-h"><span class="label">Conversión alimenticia</span><span class="chip '+(cv.ca<=3?'c-ok':(cv.ca<=3.5?'c-vacia':'c-bad'))+'">'+n1(cv.ca)+' kg por kg</span></div><p class="note">'+n0(cv.cons)+' kg de concentrado para ganar '+n0(cv.gan)+' kg entre el primer y el último pesaje. En levante y engorde, entre 2,5 y 3 es bueno; más de 3,5 indica desperdicio o problemas de salud.</p></div>';
+  if(esDueno)h+='<div class="card"><span class="label">Costo acumulado</span><dl class="kv">'+(cIn?'<dt>Valor de ingreso</dt><dd>'+money(cIn)+'</dd>':'')+'<dt>Alimento</dt><dd>'+money(cAl)+'</dd><dt>Sanidad</dt><dd>'+money(cSa)+'</dd><dt>Otros gastos</dt><dd>'+money(cGa)+'</dd><dt>Total</dt><dd>'+money(tot)+'</dd><dt>Por cerdo</dt><dd>'+(r.cab>0?money(tot/r.cab):'—')+'</dd>'+(cv?'<dt>Por kg ganado</dt><dd>'+money(tot/Math.max(1,cv.gan))+'</dd>':'')+'</dl></div>';
+  if(r.ed!=null&&r.ed>=200&&r.cab>0&&(l.negocio||'Cría')==='Cría'){var d7=add(parse(l.nac),213);h+='<div class="card"><span class="label">Selección de madres</span><div class="alert warn">'+(r.ed>=213?'Ya cumplió 7 meses':'Cumple 7 meses el '+fd(d7))+': separa las hembras que tengan buen fenotipo para madres.</div><button class="btn pri" data-act="selmadres" data-id="'+id+'">Pasar hembras a madres</button><p class="note">Cada hembra seleccionada queda como relevo en Cerdas, con su propia ficha.</p></div>';}
+  h+='<div class="card"><span class="label">Registrar</span><div class="acts"><button class="btn pri" data-act="pesarlote" data-id="'+id+'">Pesaje</button><button class="btn" data-act="salida" data-id="'+id+'">Salida (venta, muerte, traslado)</button><button class="btn" data-act="comidalote" data-id="'+id+'">Comida servida</button><button class="btn" data-act="sanidadlote" data-id="'+id+'">Vacuna o tratamiento</button>'+(l.estado!=='Cerrado'?'<button class="btn" data-act="unirlote" data-id="'+id+'">Juntar con otro lote</button><button class="btn" data-act="cerrarlote" data-id="'+id+'">Cerrar lote</button>':'')+'</div></div>';
+  var mv=regs('movimiento',id);if(mv.length)h+='<div class="card"><span class="label">Entradas y salidas</span><div class="list">'+mv.map(function(m){var det=[];if(m.sexo&&m.sexo!=='Mixto')det.push(m.sexo.toLowerCase());if(m.kg)det.push(n0(m.kg)+' kg en pie');if(m.kgCanal)det.push(n0(m.kgCanal)+' kg en canal ('+Math.round(m.kgCanal/m.kg*100)+'%)');if(m.valor&&esDueno)det.push(money(m.valor));if(m.cliente)det.push(m.cliente);if(esDueno&&m.valor&&(+m.pagado||0)<(+m.valor))det.push('debe '+money(m.valor-(m.pagado||0)));if(m.nota)det.push(m.nota);
+    return '<div class="item static"><span class="t">'+esc(m.tipoM)+': '+Math.abs(m.cabezas)+' cerdos</span><span class="r">'+fd(m.fecha)+'</span>'+(det.length?'<span class="s">'+esc(det.join(' · '))+'</span>':'')+'</div>';}).join('')+'</div></div>';
+  return h;
+}
+function vAlimento(){
+  var pre=presupuesto(),inv=inventario(),nec=necesidadCamadas(),h='';
+  var act=TIPOS.filter(function(t){return pre[t].dia>0||inv[t].stock!==0||nec[t]>0;});
+  h+='<div class="acts"><button class="btn pri" data-act="racion">Registrar comida de hoy</button><button class="btn" data-act="compra">Registrar compra</button></div>';
+  if(!act.length)return h+'<div class="card"><p class="note">Todavía no hay animales con ración asignada.</p></div>';
+  act.forEach(function(t){var p=pre[t].dia,x=inv[t],dias=p>0?Math.max(0,x.stock)/p:null;
+    var k=p<=0?'c-mut':(dias<COBMIN?'c-bad':(dias<COBOBJ?'c-vacia':'c-ok')),lbl=p<=0?'Sin consumo hoy':(x.stock<=0?'Sin inventario':(dias<COBMIN?'Comprar ya':(dias<COBOBJ?'Comprar pronto':'Al día')));
+    h+='<div class="card"><div class="card-h"><h2>'+t+'</h2><span class="chip '+k+'">'+lbl+'</span></div>';
+    h+='<div class="ration"><div><b>'+n1(p)+'</b><span>kg al día</span></div><div><b>'+n1(p*7)+'</b><span>kg a la semana</span></div><div><b>'+n1(Math.max(0,x.stock)/KGB)+'</b><span>bultos en bodega</span></div></div>';
+    h+='<dl class="kv">'+(p>0?'<dt>Alcanza para</dt><dd>'+(x.stock>0?n0(dias)+' días · hasta '+fd(add(today(),Math.floor(dias))):'0 días')+'</dd><dt>Comprar para '+COBOBJ+' días</dt><dd>'+Math.max(0,Math.ceil((p*COBOBJ-Math.max(0,x.stock))/KGB))+' bultos</dd>':'')+
+      '<dt>Servido últimos 7 días</dt><dd>'+n1(x.real7)+' kg'+(p>0?' de '+n1(p*7)+' presupuestados':'')+'</dd>'+(x.costoKg?'<dt>Costo promedio</dt><dd>'+money(x.costoKg)+'/kg</dd>':'')+(nec[t]>0?'<dt>Camadas por nacer</dt><dd>'+Math.ceil(nec[t]/KGB)+' bultos</dd>':'')+'</dl>';
+    if(pre[t].grupos.length)h+='<details><summary class="note">A quién se le sirve</summary><div class="list">'+pre[t].grupos.map(function(g){return '<div class="item static"><span class="t">'+esc(g.n)+'</span><span class="r">'+n1(g.kg)+' kg</span></div>';}).join('')+'</div></details>';
+    h+='</div>';});
+  if(Object.keys(nec).some(function(t){return nec[t]>0;}))h+='<p class="note">"Camadas por nacer" calcula lo que necesitarán los partos esperados con '+LECH+' lechones cada uno, desde el nacimiento hasta la venta.</p>';
+  return h;
+}
+function vMas(){
+  var h='<div class="card"><span class="label">Reportes</span><div class="menu">'+
+   '<button data-act="rep" data-v="inseminar"><b>¿Cuándo inseminar?</b><span>Vacías, relevos y próximos servicios</span></button>'+
+   '<button data-act="rep" data-v="agenda"><b>Agenda</b><span>Próximos 60 días y calendario</span></button>'+
+   '<button data-act="rep" data-v="indicadores"><b>Indicadores</b><span>Productividad de las cerdas y la granja</span></button>'+
+   '<button data-act="rep" data-v="parideras"><b>Parideras</b><span>Ocupación de las próximas semanas</span></button>';
+  if(esDueno)h+='<button data-act="rep" data-v="costos"><b>Costos y resultados</b><span>Cría y engorde por separado</span></button>'+
+   '<button data-act="rep" data-v="cobrar"><b>Cuentas por cobrar</b><span>Ventas pendientes de pago</span></button>'+
+   '<button data-act="rep" data-v="hato"><b>Valor del hato</b><span>Cerdas y lotes al costo</span></button>';
+  h+='<button data-act="rep" data-v="historial"><b>Registros</b><span>Últimos movimientos</span></button></div></div>';
+  h+='<div class="card"><span class="label">Exportar</span><div class="menu"><button data-act="excel"><b>Descargar Excel</b><span>Cerdas, ciclos, lotes, registros e indicadores</span></button><button data-act="ics"><b>Calendario</b><span>Agenda de 90 días para el celular</span></button></div></div>';
+  h+='<div class="card"><span class="label">Configuración</span><div class="menu"><button data-act="rep" data-v="granjas"><b>Granjas</b><span>Crear, editar y parideras</span></button><button data-act="rep" data-v="raciones"><b>Raciones y alimentos</b><span>Qué comida y cuántos kg por etapa</span></button>'+(esDueno?'<button data-act="gasto"><b>Registrar gasto</b><span>Mano de obra, transporte, otros</span></button>':'')+'<button data-act="rep" data-v="usuarios"><b>Usuarios</b><span>Dar acceso a trabajadores</span></button><button data-act="rep" data-v="cuenta"><b>Mi cuenta</b><span>'+esc(AUTH.email)+'</span></button></div></div>';
+  h+='<p class="note">Etapas de alimento según la línea Super de Italcol: preiniciador desde el destete, inicio de 12 a 30 kg, levante de 30 a 50 kg y engorde desde 50 kg; gestación 2 kg por cerda al día y lactancia 2 kg más 0,5 kg por lechón. Italcol da los alimentos de cerdos a voluntad; los kilos por día son estimados de consumo. Ajústalos en Raciones y alimentos.</p>';
+  return h;
+}
+function vRep(k){
+  var h='';
+  if(k==='inseminar'){var l=cuandoInseminar();
+    if(!l.length)return '<div class="card"><p class="note">No hay cerdas activas.</p></div>';
+    var grp=[['Para servir ahora o pronto',function(x){return x.pri<=1;}],['Relevos en preparación',function(x){return x.pri===2;}],['Después del parto',function(x){return x.pri===3;}]];
+    grp.forEach(function(g){var it=l.filter(g[1]);if(!it.length)return;h+='<div class="card"><span class="label">'+g[0]+'</span><div class="list">'+it.map(function(x){return '<button class="item" data-act="cerda" data-id="'+x.c.id+'"><span class="t">'+esc(x.c.codigo+' · '+(x.c.nombre||''))+'</span><span class="r">'+(x.d?fd(x.d):'')+'</span><span class="s">'+esc(x.txt)+'</span></button>';}).join('')+'</div></div>';});
+    h+='<p class="note">El celo vuelve cada 21 días. Revisa mañana y tarde: la cerda se queda quieta al presionarle el lomo.</p>';return h;}
+  if(k==='agenda'){var ev=proximosEventos(60);return '<div class="card">'+(ev.length?'<div class="list">'+ev.map(evItem).join('')+'</div>':'<p class="note">Nada en los próximos 60 días.</p>')+'</div><button class="btn wide" data-act="ics">Agregar estos eventos al calendario del celular</button>';}
+  if(k==='indicadores')return vIndicadores();
+  if(k==='cuenta')return '<div class="card"><span class="label">Cuenta</span><dl class="kv"><dt>Correo</dt><dd>'+esc(AUTH.email)+'</dd><dt>Guardado en</dt><dd>'+(PROV==='ms'?'Excel en OneDrive':'Google Sheets')+'</dd><dt>Rol</dt><dd>'+esc(miRol())+'</dd><dt>Última sincronización</dt><dd>'+(lastSync?new Date(lastSync).toLocaleString('es-CO'):'Nunca')+'</dd><dt>Cambios sin subir</dt><dd>'+(pendientes()?'Sí':'No')+'</dd></dl><button class="btn pri wide" data-act="syncnow">Sincronizar ahora</button><a class="btn wide" style="display:block;text-align:center;text-decoration:none;margin-top:8px" href="'+(PROV==='ms'?'https://onedrive.live.com/':('https://docs.google.com/spreadsheets/d/'+esc(SHEET)))+'" target="_blank" rel="noopener">'+(PROV==='ms'?'Abrir OneDrive (carpeta Pig App)':'Abrir la base de datos en Google Sheets')+'</a></div><div class="card"><p class="note">Al cerrar sesión se borra la copia de este celular. Lo que ya subió a Drive queda guardado.</p><button class="btn wide" data-act="logout">Cerrar sesión</button></div>';
+  if(k==='parideras')return vParideras();
+  if(k==='cobrar')return vCobrar();
+  if(k==='hato')return vHato();
+  if(k==='usuarios'){var us=vals('usuarios').sort(function(a,b){return (a.email||'').localeCompare(b.email||'');});
+    h='<div class="card"><span class="label">Usuarios de la granja</span><div class="list">'+us.map(function(u){return '<div class="item static"><span class="t">'+esc(u.nombre||u.email)+'</span><span class="r">'+esc(u.rol)+'</span><span class="s">'+esc(u.email)+(esDueno&&u.email!==AUTH.email?' · <button class="btn" style="padding:2px 8px;font-size:.75rem" data-act="quitarusu" data-id="'+esc(u.id)+'">Quitar</button>':'')+'</span></div>';}).join('')+'</div>'+(esDueno?'<button class="btn pri wide" data-act="nuevousu">+ Agregar usuario</button>':'')+'</div>';
+    h+='<div class="card"><span class="label">Roles</span><p class="note"><b>Administrador:</b> ve y edita todo, incluidos costos y resultados.<br><b>Operario:</b> registra comida, pesajes, partos, vacunas y salidas; no ve costos ni valores.<br><b>Consulta:</b> solo mira.</p><p class="note">Al agregar un usuario, la app le comparte la base de datos en Google Drive. Él instala Pig App, entra con su cuenta '+(PROV==='ms'?'de Microsoft':'de Gmail')+', elige "Unirme a una granja" y pega '+(PROV==='ms'?'este código':'este enlace')+':</p><div class="alert ok" style="word-break:break-all">'+esc(codigoGranja())+'</div><button class="btn wide" data-act="copiarlink">Copiar</button></div>';
+    return h;}
+  if(k==='raciones'){var N=NORMAS(),M=MAD(),pers=!!(S.config&&S.config.normas);
+    function sel(id,v){return '<select id="'+id+'">'+TIPOS.map(function(t){return '<option'+(t===v?' selected':'')+'>'+t+'</option>';}).join('')+'</select>';}
+    function num(id,v){return '<input id="'+id+'" inputmode="decimal" value="'+v+'" style="text-align:right">';}
+    h='<div class="card"><span class="label">Cerdos por edad (kg por cerdo al día)</span><p class="note">Desde el nacimiento hasta la venta. El destete es a los '+LACT+' días.</p>';
+    N.forEach(function(n,i){h+='<div class="field" style="border-top:1px solid var(--line);padding-top:8px"><label>'+esc(n.e)+' <span class="note">· días '+n.d0+(n.d1>9000?' en adelante':' a '+n.d1)+'</span></label><div class="grid2">'+sel('nr_a_'+i,n.a)+num('nr_k_'+i,n.kg)+'</div></div>';});
+    h+='</div><div class="card"><span class="label">Cerdas madres</span><div class="field"><label for="md_a">Alimento de las madres</label>'+sel('md_a',M.a)+'</div><div class="grid2">';
+    [['vacia','Vacía (kg/día)'],['gest1','Gestación día 1–84'],['gest2','Gestación día 85–114'],['lactBase','Lactancia: base'],['lactLechon','Lactancia: + por lechón'],['relevo','Relevo después de 7 meses'],['descarte','Descarte']].forEach(function(x){h+='<div class="field"><label for="md_'+x[0]+'">'+x[1]+'</label>'+num('md_'+x[0],M[x[0]])+'</div>';});
+    h+='</div><span class="err" id="rc_err" style="color:var(--bad);font-size:.85rem"></span><button class="btn pri wide" data-act="saveraciones">Guardar raciones</button>'+(pers?'<button class="btn wide" data-act="resetraciones">Volver a los valores de referencia</button>':'')+'</div>';
+    return h;}
+  if(k==='granjas'){return '<div class="card"><div class="list">'+granjas().map(function(g){var n=vals('cerdas').filter(function(c){return c.granja===g.id&&c.estadoFicha!=='Vendida'&&c.estadoFicha!=='Muerta';}).length;return '<button class="item" data-act="editfarm" data-id="'+g.id+'"><span class="t">'+esc(g.nombre)+'</span><span class="r">'+n+' cerdas</span>'+(g.ubicacion?'<span class="s">'+esc(g.ubicacion)+'</span>':'')+'</button>';}).join('')+'</div></div><button class="btn pri wide" data-act="newfarm">+ Nueva granja</button>';}
+  if(k==='historial'){var all=vals('regs').filter(enGranja).sort(function(a,b){return (b.fecha||'').localeCompare(a.fecha||'')||(b.creado||0)-(a.creado||0);}).slice(0,40);
+    var nm={consumo:'Comida',compra:'Compra',sanidad:'Sanidad',pesaje:'Pesaje',movimiento:'Salida',gasto:'Gasto'};
+    return '<div class="card">'+(all.length?'<div class="list">'+all.map(function(r){var who=S.cerdas[r.ref]?S.cerdas[r.ref].codigo:(S.lotes[r.ref]?'Lote '+S.lotes[r.ref].codigo:'');var d=r.tipo==='consumo'?n1(r.kg)+' kg de '+r.alimento:(r.tipo==='compra'?r.bultos+' bultos de '+r.alimento:(r.tipo==='sanidad'?(r.producto||r.tipoS):(r.tipo==='pesaje'?n1(r.kg)+' kg':(r.tipo==='movimiento'?r.tipoM+' · '+r.cabezas:(r.concepto||'')))));
+      return '<div class="item static"><span class="t">'+nm[r.tipo]+(who?' · '+esc(who):'')+'</span><span class="r">'+fd(r.fecha)+'</span><span class="s">'+esc(d)+(r.valor?' · '+money(r.valor):'')+' · <button class="btn" style="padding:2px 8px;font-size:.75rem" data-act="delreg" data-id="'+r.id+'">Borrar</button></span></div>';}).join('')+'</div>':'<p class="note">Sin registros todavía.</p>')+'</div>';}
+  if(k==='costos'){
+    var y=today().getFullYear(),from=ui.per==='mes'?iso(new Date(y,today().getMonth(),1)):(ui.per==='anio'?y+'-01-01':'0000');
+    var inP=function(r){return enGranja(r)&&(r.fecha||'')>=from;},inv=inventario();
+    function sum(arr,f){return arr.reduce(function(s,x){return s+(+f(x)||0);},0);}
+    var R={'Cría':{},'Engorde':{}};
+    ['Cría','Engorde'].forEach(function(n){var mv=regs('movimiento').filter(function(m){return inP(m)&&(m.negocio||'Cría')===n;});
+      R[n].ventas=sum(mv.filter(function(m){return m.tipoM==='Venta'||m.tipoM==='Sacrificio';}),function(m){return m.valor;});
+      R[n].traslado=sum(mv.filter(function(m){return m.tipoM==='Traslado a engorde';}),function(m){return m.valor;});
+      R[n].alimento=sum(regs('consumo').filter(function(r){return inP(r)&&(r.negocio||'Cría')===n;}),function(r){return (+r.kg||0)*(inv[r.alimento]?inv[r.alimento].costoKg:0);});
+      R[n].sanidad=sum(regs('sanidad').filter(function(r){return inP(r)&&(r.negocio||'Cría')===n;}),function(r){return r.valor;});
+      R[n].gastos=sum(regs('gasto').filter(function(r){return inP(r)&&r.negocio===n;}),function(r){return r.valor;});});
+    R['Cría'].descarte=sum(vals('cerdas').filter(function(c){return enGranja(c)&&c.valorBaja&&(c.fechaBaja||'')>=from;}),function(c){return c.valorBaja;});
+    R['Engorde'].compraLech=sum(vals('lotes').filter(function(l){return enGranja(l)&&l.negocio==='Engorde'&&(l.ingreso||l.nac||'')>=from;}),function(l){return l.valor;});
+    var gen=sum(regs('gasto').filter(function(r){return inP(r)&&r.negocio==='General';}),function(r){return r.valor;});
+    var ic=R['Cría'].ventas+R['Cría'].traslado+R['Cría'].descarte,cc=R['Cría'].alimento+R['Cría'].sanidad+R['Cría'].gastos;
+    var ie=R['Engorde'].ventas,ce=R['Engorde'].compraLech+R['Engorde'].alimento+R['Engorde'].sanidad+R['Engorde'].gastos;
+    var dest=sum(vals('ciclos').filter(function(c){return enGranja(c)&&c.destete&&c.destete>=from;}),function(c){return c.destetados;});
+    h='<div class="seg">'+[['mes','Este mes'],['anio','Este año'],['todo','Todo']].map(function(x){return '<button data-act="per" data-v="'+x[0]+'" aria-pressed="'+(ui.per===x[0])+'">'+x[1]+'</button>';}).join('')+'</div>';
+    h+='<div class="card"><div class="card-h"><h2>Cría</h2><b class="mono">'+money(ic-cc)+'</b></div><dl class="kv"><dt>Ventas</dt><dd>'+money(R['Cría'].ventas)+'</dd><dt>Traslados a engorde</dt><dd>'+money(R['Cría'].traslado)+'</dd><dt>Cerdas de descarte</dt><dd>'+money(R['Cría'].descarte)+'</dd><dt>Alimento</dt><dd>−'+money(R['Cría'].alimento)+'</dd><dt>Sanidad</dt><dd>−'+money(R['Cría'].sanidad)+'</dd><dt>Otros gastos</dt><dd>−'+money(R['Cría'].gastos)+'</dd><dt>Lechones destetados</dt><dd>'+dest+'</dd><dt>Costo por lechón</dt><dd>'+(dest?money(cc/dest):'—')+'</dd></dl></div>';
+    var mvE=regs('movimiento').filter(function(m){return inP(m)&&(m.tipoM==='Venta'||m.tipoM==='Sacrificio');}),kgV=sum(mvE,function(m){return m.kg;}),kgC=sum(mvE,function(m){return m.kgCanal;}),valC=sum(mvE.filter(function(m){return m.kgCanal;}),function(m){return m.valor;}),valV=sum(mvE,function(m){return m.valor;});
+    h+='<div class="card"><span class="label">Kilos vendidos (cría y engorde)</span><dl class="kv"><dt>Kg en pie</dt><dd>'+n0(kgV)+'</dd><dt>Precio promedio en pie</dt><dd>'+(kgV?money(valV/kgV)+'/kg':'—')+'</dd><dt>Costo por kg producido</dt><dd>'+(kgV?money((cc+ce-R['Engorde'].compraLech-R['Cría'].traslado+gen)/kgV)+'/kg':'—')+'</dd>'+(kgC?'<dt>Kg en canal</dt><dd>'+n0(kgC)+'</dd><dt>Precio de la carne</dt><dd>'+money(valC/kgC)+'/kg · '+money(valC/kgC/2)+'/lb</dd>':'')+'</dl><p class="note">El costo por kg suma alimento, sanidad y gastos de los dos negocios (sin el traslado interno) y lo divide por los kg vendidos en pie.</p></div>';
+    h+='<div class="card"><div class="card-h"><h2>Engorde</h2><b class="mono">'+money(ie-ce)+'</b></div><dl class="kv"><dt>Ventas y carne</dt><dd>'+money(ie)+'</dd><dt>Lechones recibidos</dt><dd>−'+money(R['Engorde'].compraLech)+'</dd><dt>Alimento</dt><dd>−'+money(R['Engorde'].alimento)+'</dd><dt>Sanidad</dt><dd>−'+money(R['Engorde'].sanidad)+'</dd><dt>Otros gastos</dt><dd>−'+money(R['Engorde'].gastos)+'</dd></dl></div>';
+    h+='<div class="card"><div class="card-h"><h2>Total</h2><b class="mono">'+money(ic-cc+ie-ce-gen)+'</b></div><dl class="kv"><dt>Gastos generales</dt><dd>−'+money(gen)+'</dd></dl><p class="note">Los traslados de cría a engorde se cancelan entre los dos negocios. La compra de cerdas no se resta: es inversión.</p></div>';
+    return h;}
+  return '';
+}
+
+/* ============ formularios ============ */
+var layer=document.getElementById('layer'),formCb=null,formFields=null;
+function close(){layer.innerHTML='';formCb=null;}
+function sheetHTML(title,body){return '<div class="sheet-wrap" data-act="scrim"><div class="sheet" role="dialog" aria-label="'+esc(title)+'"><div class="card-h"><h2>'+esc(title)+'</h2><button class="btn" data-act="close">Cerrar</button></div>'+body+'</div></div>';}
+function form(title,fields,cb,note){
+  formFields=fields;formCb=cb;
+  var b='<form id="fm" novalidate style="display:flex;flex-direction:column;gap:12px">'+(note?'<p class="note">'+esc(note)+'</p>':'');
+  fields.forEach(function(f){if(f.hidden)return;var id='f_'+f.k,v=f.v==null?'':f.v,inp;
+    if(f.type==='select')inp='<select id="'+id+'">'+f.opts.map(function(o){var ov=Array.isArray(o)?o[0]:o,ol=Array.isArray(o)?o[1]:o;return '<option value="'+esc(ov)+'"'+(String(ov)===String(v)?' selected':'')+'>'+esc(ol)+'</option>';}).join('')+'</select>';
+    else inp='<input id="'+id+'" type="'+(f.type||'text')+'"'+(f.type==='number'?' inputmode="decimal" step="any" min="0"':'')+' value="'+esc(v)+'"'+(f.ph?' placeholder="'+esc(f.ph)+'"':'')+'>';
+    b+='<div class="field"><label for="'+id+'">'+esc(f.l)+(f.req?' *':'')+'</label>'+inp+'<small id="h_'+f.k+'">'+esc(f.help||'')+'</small>'+'<span class="err" id="e_'+f.k+'"></span></div>';});
+  b+='<button class="btn pri wide" type="submit">Guardar</button></form>';
+  layer.innerHTML=sheetHTML(title,b);
+  var first=layer.querySelector('input,select');if(first)try{first.focus({preventScroll:true});}catch(e){}
+}
+layer.addEventListener('submit',function(ev){ev.preventDefault();if(!formCb)return;var out={},ok=true;
+  formFields.forEach(function(f){if(f.hidden){out[f.k]=f.v;return;}var el=document.getElementById('f_'+f.k),v=el.value.trim(),er=document.getElementById('e_'+f.k);er.textContent='';
+    if(f.req&&v===''){er.textContent='Este dato es obligatorio';ok=false;}
+    if(f.type==='number'&&v!==''){if(isNaN(+v.replace(',','.'))){er.textContent='Escribe un número';ok=false;}else v=+v.replace(',','.');}
+    out[f.k]=v;});
+  if(!ok)return;var cb=formCb,res=cb(out);if(res===false)return;close();render();});
+layer.addEventListener('input',function(ev){var t=ev.target;if(t.id&&t.id.indexOf('f_')===0){var e=document.getElementById('e_'+t.id.slice(2));if(e)e.textContent='';}});
+
+var toastT;function toast(t){var d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);clearTimeout(toastT);toastT=setTimeout(function(){d.remove();},2600);}
+function gOpts(){return granjas().map(function(g){return [g.id,g.nombre];});}
+function gDef(){return ui.granja!=='todas'?ui.granja:(granjas()[0]||{}).id;}
+function reg(o){var id=uid('r');o.creado=Date.now();put('regs',id,o);return id;}
+
+function fGranja(id){var g=id?S.granjas[id]:{};form(id?'Editar granja':'Nueva granja',[{k:'nombre',l:'Nombre',req:true,v:g.nombre},{k:'ubicacion',l:'Ubicación',v:g.ubicacion},{k:'parideras',l:'Parideras (puestos de parto)',type:'number',v:g.parideras,help:'Para avisarte si coinciden más partos que parideras.'},{k:'corrales',l:'Corrales de levante y engorde',type:'number',v:g.corrales}],function(v){var nid=id||uid('g');put('granjas',nid,{nombre:v.nombre,ubicacion:v.ubicacion,parideras:v.parideras===''?null:v.parideras,corrales:v.corrales===''?null:v.corrales});if(!id){ui.granja=nid;persist();}toast(id?'Granja actualizada':'Granja creada');});}
+function avisoPeso(nacId,pesoId,fechaId,fijoNac){
+  function upd(){var nac=fijoNac||(document.getElementById(nacId)||{}).value,h=document.getElementById('h_'+pesoId.slice(2));if(!h)return;
+    if(!nac){h.textContent='Pon la fecha de nacimiento para ver el peso estimado.';h.style.color='';return;}
+    var f=fechaId&&document.getElementById(fechaId)?document.getElementById(fechaId).value:iso(today());var d=edadDias(nac,parse(f||iso(today())));
+    if(d<0){h.textContent='La fecha de nacimiento es posterior a hoy.';h.style.color='var(--bad)';return;}
+    var e=pesoEsperado(d),raw=String((document.getElementById(pesoId)||{}).value||'').replace(',','.'),v=+raw;
+    var base='Peso estimado para '+n1(d/30.4)+' meses: '+n0(e)+' kg (normal entre '+n0(e*0.85)+' y '+n0(e*1.15)+').';
+    var inp=document.getElementById(pesoId);if(inp)inp.placeholder='~'+n0(e)+' kg';
+    if(raw&&v>0){var st=v/e<0.85?'Bajo':(v/e>1.15?'Alto':'Normal');h.textContent=base+' Con '+n1(v)+' kg está '+(st==='Normal'?'bien':(st==='Bajo'?'BAJA de peso':'por ENCIMA del peso'))+'.';h.style.color=st==='Normal'?'var(--ok)':(st==='Bajo'?'var(--bad)':'var(--warn)');}
+    else{h.textContent=base;h.style.color='';}}
+  [nacId,pesoId,fechaId].forEach(function(x){var el=x&&document.getElementById(x);if(el){el.addEventListener('input',upd);el.addEventListener('change',upd);}});upd();
+}
+function fCerda(id){var c=id?S.cerdas[id]:{};
+  form(id?'Editar ficha':'Nueva cerda',[
+    {k:'granja',l:'Granja',type:'select',opts:gOpts(),v:c.granja||gDef(),req:true},
+    {k:'codigo',l:'Código o arete',req:true,v:c.codigo,ph:'C06'},
+    {k:'nombre',l:'Nombre',v:c.nombre},
+    {k:'tipo',l:'Tipo',type:'select',opts:[['Madre','Madre (ya en reproducción)'],['Relevo','Relevo (hembra de reemplazo)']],v:c.tipo||'Madre'},
+    {k:'raza',l:'Raza o línea',v:c.raza,ph:'Duroc, Landrace, cruce…'},
+    {k:'nac',l:'Fecha de nacimiento',type:'date',v:c.nac,req:true,help:'Con esto se calcula la ración y se valida el peso.'},
+    {k:'origen',l:'Origen',type:'select',opts:['Compra','Relevo propio'],v:c.origen||'Compra'},
+    {k:'valorCompra',l:'Valor de compra',type:'number',v:c.valorCompra},
+    {k:'peso',l:'Peso actual (kg)',type:'number',hidden:!!id}],
+  function(v){var dup=vals('cerdas').some(function(x){return x.codigo===v.codigo&&x.id!==id&&x.granja===v.granja;});if(dup){document.getElementById('e_codigo').textContent='Ya existe una cerda con ese código';return false;}
+    var nid=id||uid('c'),o=Object.assign({},c,{granja:v.granja,codigo:v.codigo,nombre:v.nombre,tipo:v.tipo,raza:v.raza,nac:v.nac,origen:v.origen,valorCompra:v.valorCompra===''?null:v.valorCompra});
+    if(!id){o.estadoFicha='Activa';o.creado=Date.now();}
+    put('cerdas',nid,o);
+    if(!id&&v.peso!==''&&v.peso!=null)reg({tipo:'pesaje',granja:v.granja,ref:nid,fecha:iso(today()),kg:v.peso,cabezas:1});
+    if(!id){ui.det={t:'cerda',id:nid};}
+    var ev=v.peso?evalPeso(v.peso,edadDias(v.nac)):null;toast(ev?'Guardada · peso '+ev.estado.toLowerCase()+' para su edad':'Cerda guardada · peso estimado '+n0(pesoEsperado(edadDias(v.nac)))+' kg');});
+  if(!id)avisoPeso('f_nac','f_peso');}
+function fServicio(id){var c=S.cerdas[id];form('Registrar servicio · '+c.codigo,[{k:'fecha',l:'Fecha del servicio',type:'date',v:iso(today()),req:true},{k:'tipoS',l:'Tipo',type:'select',opts:['Inseminación','Monta']},{k:'semen',l:'Semen o verraco',ph:'Raza o proveedor'}],
+  function(v){var n=ciclosDe(id).filter(function(x){return x.parto;}).length;put('ciclos',uid('ci'),{granja:c.granja,cerda:id,num:n+1,servicio:v.fecha,tipoS:v.tipoS,semen:v.semen,resultado:'Pendiente'});
+    if(c.tipo==='Relevo')put('cerdas',id,Object.assign({},c,{tipo:'Madre'}));
+    toast('Servicio registrado · parto ~ '+fd(add(parse(v.fecha),GEST)));});}
+function ultimoCiclo(id){var cs=ciclosDe(id);return cs[cs.length-1];}
+function setCiclo(ci,patch){var o=Object.assign({},S.ciclos[ci.id],patch);put('ciclos',ci.id,o);}
+function fParto(id){var c=S.cerdas[id],ci=ultimoCiclo(id);
+  form('Registrar parto · '+c.codigo,[{k:'fecha',l:'Fecha del parto',type:'date',v:iso(today()),req:true},{k:'vivos',l:'Nacidos vivos',type:'number',req:true},{k:'muertos',l:'Nacidos muertos',type:'number',v:0},{k:'momias',l:'Momias',type:'number',v:0},{k:'machos',l:'Machos (de los vivos)',type:'number',help:'Opcional. Sirve para la castración y para saber cuántas hembras habrá para madres.'},{k:'hembras',l:'Hembras (de los vivos)',type:'number'}],
+  function(v){var m=v.machos,hh=v.hembras;if(m!==''&&hh==='')hh=v.vivos-m;if(hh!==''&&m==='')m=v.vivos-hh;
+    if(m!==''&&(m<0||hh<0||m+hh!==v.vivos)){document.getElementById('e_hembras').textContent='Machos más hembras deben sumar '+v.vivos;return false;}
+    setCiclo(ci,{parto:v.fecha,vivos:v.vivos,muertos:v.muertos,momias:v.momias,resultado:'Parió',machos:m===''?null:m,hembras:hh===''?null:hh});
+    setTimeout(function(){fPesos({titulo:'Peso al nacer · camada de '+c.codigo,n:v.vivos,nac:v.fecha,fecha:v.fecha,quien:'Lechón',save:function(ws,f){setCiclo(ci,{pesosNac:ws,pesoCamada:Math.round(ws.reduce(function(a,x){return a+x;},0)*10)/10});}});},0);
+    toast('Parto registrado · '+v.vivos+' lechones con la madre hasta el destete');});}
+function fDestete(id){var c=S.cerdas[id],ci=ultimoCiclo(id),cab=lechonesLactando(ci);
+  var cand=vals('lotes').filter(function(l){return l.granja===c.granja&&l.estado!=='Cerrado'&&(l.negocio||'Cría')==='Cría'&&l.ingreso&&Math.abs(diff(parse(l.ingreso),today()))<=10;});
+  form('Destete · '+c.codigo,[{k:'fecha',l:'Fecha del destete',type:'date',v:iso(today()),req:true},{k:'destetados',l:'Lechones destetados',type:'number',v:cab,req:true},
+    {k:'lote',l:'Lote',type:'select',opts:[['nuevo','Formar lote nuevo con esta camada']].concat(cand.map(function(l){return [l.id,'Juntar con lote '+l.codigo+' ('+cabezasLote(l)+' lechones de '+madresDe(l).map(function(m){return S.cerdas[m]?S.cerdas[m].codigo:'';}).join(', ')+')'];})),v:'nuevo',hidden:!cand.length,help:'Puedes juntar en un lote las camadas de una o dos cerdas destetadas en la misma semana.'}],
+  function(v){var ext=cab-v.destetados,lid,cod,sx=sexoCamada(ci);
+    if(ext>0)setCiclo(ci,{muertesLact:(+ci.muertesLact||0)+ext});
+    var sm=null,sh=null;if(sx){sm=Math.min(sx.m,v.destetados);sh=v.destetados-sm;}
+    if(v.lote&&v.lote!=='nuevo'&&S.lotes[v.lote]){lid=v.lote;var L=S.lotes[lid],ms=madresDe(L).slice();if(ms.indexOf(id)<0)ms.push(id);
+      var pl={cabezas:(+L.cabezas||0)+v.destetados,madres:ms,nac:(L.nac&&L.nac<ci.parto)?L.nac:ci.parto};if(sx&&L.machos!=null){pl.machos=(+L.machos||0)+sm;pl.hembras=(+L.hembras||0)+sh;}
+      put('lotes',lid,Object.assign({},L,pl));cod=L.codigo;}
+    else{lid=uid('l');cod='L-'+c.codigo+'-'+v.fecha.slice(2,4)+v.fecha.slice(5,7);
+      put('lotes',lid,{granja:c.granja,codigo:cod,negocio:'Cría',origen:'Destete',madre:id,madres:[id],nac:ci.parto,ingreso:v.fecha,cabezas:v.destetados,machos:sm,hembras:sh,estado:'Activo'});}
+    setCiclo(S.ciclos[ci.id]?Object.assign({id:ci.id},S.ciclos[ci.id]):ci,{destete:v.fecha,destetados:v.destetados,lote:lid});
+    setTimeout(function(){fPesarLote(lid,v.fecha,'Peso al destete');},0);
+    toast('Destete registrado · lote '+cod+' · celo esperado ~ '+fd(add(parse(v.fecha),5)));});}
+function fMuerteLech(id){var c=S.cerdas[id],ci=ultimoCiclo(id),n=lechonesLactando(ci);
+  form('Murió un lechón · '+c.codigo,[{k:'cant',l:'Cuántos',type:'number',v:1,req:true,help:'Quedan '+n+' con la madre.'},{k:'sexo',l:'Sexo',type:'select',opts:['No sé','Macho','Hembra']},{k:'causa',l:'Causa',type:'select',opts:['Aplastado','Débil al nacer','Diarrea','Otra']}],
+  function(v){if(v.cant>n){document.getElementById('e_cant').textContent='Solo quedan '+n;return false;}var p={muertesLact:(+ci.muertesLact||0)+v.cant};if(v.sexo==='Macho')p.muertesM=(+ci.muertesM||0)+v.cant;if(v.sexo==='Hembra')p.muertesH=(+ci.muertesH||0)+v.cant;setCiclo(ci,p);toast('Registrado · quedan '+(n-v.cant)+' lechones');});}
+function fPesarCamada(id){var c=S.cerdas[id],ci=ultimoCiclo(id);fPesos({titulo:'Pesar camada de '+c.codigo,n:lechonesLactando(ci),nac:ci.parto,quien:'Lechón',save:function(ws,f){reg({tipo:'pesaje',granja:c.granja,ref:ci.id,fecha:f,kg:Math.round(ws.reduce(function(a,x){return a+x;},0)*10)/10,cabezas:ws.length,pesos:ws});}});}
+function fPesar(id){var c=S.cerdas[id];form('Pesaje · '+c.codigo,[{k:'fecha',l:'Fecha',type:'date',v:iso(today()),req:true},{k:'kg',l:'Peso (kg)',type:'number',req:true,help:' '},{k:'cond',l:'Condición corporal',type:'select',opts:['','1 Muy flaca','2 Flaca','3 Ideal','4 Gorda','5 Muy gorda']}],
+  function(v){reg({tipo:'pesaje',granja:c.granja,ref:id,fecha:v.fecha,kg:v.kg,cabezas:1,cond:v.cond});var ev=c.nac?evalPeso(v.kg,edadDias(c.nac,parse(v.fecha))):null;toast(ev?'Peso '+ev.estado.toLowerCase()+' para su edad (se esperan '+n0(ev.esp)+' kg)':'Pesaje guardado');});
+  if(c.nac)avisoPeso(null,'f_kg','f_fecha',c.nac);}
+function fPesos(o){var cab=Math.max(1,o.n||1),f0=o.fecha||iso(today()),quien=o.quien||'Cerdo';
+  function row(i){return '<div class="row-in" data-pig><label for="pw_'+i+'"><b>Cerdo '+i+'</b><br><span class="note" id="pe_'+i+'"></span></label><input id="pw_'+i+'" inputmode="decimal" placeholder="kg"></div>';}
+  var b='<form id="pf" style="display:flex;flex-direction:column;gap:6px"><div class="field"><label for="pf_fecha">Fecha</label><input id="pf_fecha" type="date" value="'+f0+'"></div>'+
+    '<p class="note" id="pf_ref"></p><div class="alert ok" id="pf_sum">Escribe el peso de cada cerdo.</div><div id="pf_rows">';
+  for(var i=1;i<=cab;i++)b+=row(i);
+  b+='</div><button class="btn" type="button" id="pf_add">+ Agregar otro cerdo</button><span class="err" id="pf_err" style="color:var(--bad);font-size:.85rem"></span><button class="btn pri wide" type="submit">Guardar pesaje</button></form>';
+  layer.innerHTML=sheetHTML(o.titulo,b);formCb=null;
+  var n=cab;
+  function esp(){var f=document.getElementById('pf_fecha').value||iso(today());return o.nac?pesoEsperado(Math.max(0,edadDias(o.nac,parse(f)))):null;}
+  function upd(){var e=esp(),ws=[],bajos=0,altos=0;
+    document.getElementById('pf_ref').textContent=e?'A esta edad cada cerdo debería pesar cerca de '+n1(e)+' kg (normal entre '+n1(e*0.85)+' y '+n1(e*1.15)+').':'';
+    for(var i=1;i<=n;i++){var inp=document.getElementById('pw_'+i),v=+String(inp.value).replace(',','.'),lab=document.getElementById('pe_'+i);
+      if(v>0){ws.push(v);if(e){var r=v/e;var st=r<0.85?'Bajo':(r>1.15?'Alto':'Normal');if(st==='Bajo')bajos++;if(st==='Alto')altos++;lab.textContent=st;lab.style.color=st==='Normal'?'var(--ok)':(st==='Bajo'?'var(--bad)':'var(--warn)');}else lab.textContent='';}else lab.textContent='';}
+    var s=document.getElementById('pf_sum');if(!ws.length){s.className='alert ok';s.textContent='Escribe el peso de cada cerdo.';return;}
+    var tot=ws.reduce(function(a,x){return a+x;},0),avg=tot/ws.length;
+    s.className='alert '+(bajos?'warn':'ok');s.textContent=ws.length+' pesados · promedio '+n1(avg)+' kg · total '+n1(tot)+' kg'+(bajos?' · '+bajos+' bajos de peso':'')+(altos?' · '+altos+' altos':'');}
+  document.getElementById('pf').addEventListener('input',function(){document.getElementById('pf_err').textContent='';upd();});
+  document.getElementById('pf_add').onclick=function(){n++;document.getElementById('pf_rows').insertAdjacentHTML('beforeend',row(n));document.getElementById('pw_'+n).focus();};
+  upd();try{document.getElementById('pw_1').focus({preventScroll:true});}catch(e){}
+  document.getElementById('pf').onsubmit=function(ev){ev.preventDefault();var ws=[];
+    for(var i=1;i<=n;i++){var raw=String(document.getElementById('pw_'+i).value).trim();if(raw==='')continue;var v=+raw.replace(',','.');if(!(v>0)){document.getElementById('pf_err').textContent=quien+' '+i+' tiene un peso que no es un número válido';return;}ws.push(Math.round(v*10)/10);}
+    if(!ws.length){document.getElementById('pf_err').textContent='Escribe al menos un peso';return;}
+    var f=document.getElementById('pf_fecha').value||iso(today()),tot=ws.reduce(function(a,x){return a+x;},0);
+    o.save(ws,f);
+    close();render();var e=o.nac?evalPeso(tot/ws.length,Math.max(0,edadDias(o.nac,parse(f)))):null;toast('Promedio '+n1(tot/ws.length)+' kg'+(e?' · '+e.estado.toLowerCase()+' para su edad':''));};
+}
+function fPesarLote(id,fecha,titulo){var l=Object.assign({id:id},S.lotes[id]);fPesos({titulo:(titulo||'Pesaje')+' · lote '+l.codigo,n:cabezasLote(l),nac:l.nac,fecha:fecha,save:function(ws,f){reg({tipo:'pesaje',granja:l.granja,ref:id,fecha:f,kg:Math.round(ws.reduce(function(a,x){return a+x;},0)*10)/10,cabezas:ws.length,pesos:ws});}});}
+function fSanidad(ref,esLote){var o=esLote?S.lotes[ref]:S.cerdas[ref];form('Vacuna o tratamiento · '+(esLote?'lote ':'')+o.codigo,[{k:'fecha',l:'Fecha',type:'date',v:iso(today()),req:true},{k:'tipoS',l:'Tipo',type:'select',opts:['Vacuna','Desparasitante','Hierro','Antibiótico','Vitaminas','Castración','Otro']},{k:'producto',l:'Producto',req:true,ph:'Ej. E. coli, PPC, Ivermectina'},{k:'dosis',l:'Dosis'},{k:'valor',l:'Costo',type:'number',hidden:!esDueno},{k:'proxima',l:'Próxima dosis',type:'date'},{k:'retiro',l:'Días de retiro',type:'number',help:'Lo dice la etiqueta del medicamento: días antes de poder vender o sacrificar.'}],
+  function(v){var rh=v.retiro>0?iso(add(parse(v.fecha),v.retiro)):null;reg({tipo:'sanidad',granja:o.granja,ref:ref,negocio:esLote?(o.negocio||'Cría'):'Cría',fecha:v.fecha,tipoS:v.tipoS,producto:v.producto,dosis:v.dosis,valor:v.valor||0,proxima:v.proxima||null,retiro:v.retiro||null,retiroHasta:rh});toast(rh?'Registrado · en retiro hasta el '+fd(rh):'Registrado');});}
+function fBaja(id){var c=S.cerdas[id];form('Dar de baja · '+c.codigo,[{k:'estado',l:'Qué pasó',type:'select',opts:['Descarte','Vendida','Muerta'],help:'Descarte = sigue en la granja mientras se vende.'},{k:'fecha',l:'Fecha',type:'date',v:iso(today()),req:true},{k:'motivo',l:'Motivo',type:'select',opts:['Reproductivo','Patas / aplomos','Edad','Baja producción','Enfermedad','Otro']},{k:'valor',l:'Valor de venta',type:'number'}],
+  function(v){var rt=retiroHasta(id);if(rt&&v.estado==='Vendida'&&v.fecha<=rt){document.getElementById('e_fecha').textContent='Está en retiro de medicamento hasta el '+fd(rt)+'. No se puede vender antes.';return false;}put('cerdas',id,Object.assign({},c,{estadoFicha:v.estado,fechaBaja:v.fecha,motivoBaja:v.motivo,valorBaja:v.valor||null}));toast('Ficha actualizada');});}
+function fLote(){form('Crear lote de cerdos',[{k:'granja',l:'Granja',type:'select',opts:gOpts(),v:gDef(),req:true},{k:'codigo',l:'Código',req:true,ph:'E-001'},{k:'negocio',l:'Negocio',type:'select',opts:['Engorde','Cría']},{k:'nac',l:'Fecha de nacimiento de los cerdos',type:'date',req:true,help:'Si no la sabes exacta, una aproximada; de ella sale la ración.'},{k:'cabezas',l:'Cantidad de cerdos',type:'number',req:true},{k:'valor',l:'Valor de ingreso (compra)',type:'number'}],
+  function(v){var id=uid('l');put('lotes',id,{granja:v.granja,codigo:v.codigo,negocio:v.negocio,origen:'Compra',nac:v.nac,ingreso:iso(today()),cabezas:v.cabezas,valor:v.valor||0,estado:'Activo'});ui.det={t:'lote',id:id};toast('Lote creado');setTimeout(function(){fPesarLote(id,iso(today()),'Peso al ingreso');},0);});}
+function fSalida(id,tipo){var l=Object.assign({id:id},S.lotes[id]),cab=cabezasLote(l),sx=sexoLote(l);
+  form('Salida · lote '+l.codigo,[{k:'tipoM',l:'Tipo',type:'select',v:tipo||'Venta',opts:['Venta','Sacrificio','Muerte','Traslado a engorde','Relevo a cría'],help:'Venta = en pie. Sacrificio = venta de carne. Traslado crea un lote de engorde. Relevo crea las fichas de las hembras.'},
+    {k:'fecha',l:'Fecha',type:'date',v:iso(today()),req:true},{k:'cabezas',l:'Cantidad',type:'number',req:true,help:'Hay '+cab+' en el lote'+(sx?' ('+sx.m+' machos, '+sx.h+' hembras)':'')+'.'},
+    {k:'sexo',l:'Sexo',type:'select',v:tipo==='Relevo a cría'?'Hembras':'Mixto',opts:[['Mixto','Mixto o no sé'],'Machos','Hembras']},
+    {k:'kg',l:'Kg en pie (total)',type:'number'},{k:'kgCanal',l:'Kg en canal (solo sacrificio)',type:'number',help:'Para calcular el rendimiento de la carne.'},
+    {k:'valor',l:'Valor total',type:'number',hidden:!esDueno,help:'En traslados, el precio de mercado de esos lechones.'},
+    {k:'cliente',l:'Cliente'},{k:'pagado',l:'Valor pagado',type:'number',hidden:!esDueno,help:'Vacío = pagado completo. Si te quedan debiendo, escribe lo que te pagaron.'},
+    {k:'nota',l:'Causa o nota'}],
+  function(v){if(v.cabezas>cab){document.getElementById('e_cabezas').textContent='El lote solo tiene '+cab;return false;}
+    if(!(v.cabezas>0)){document.getElementById('e_cabezas').textContent='Debe ser mayor que cero';return false;}
+    var rt=retiroHasta(id);if(rt&&(v.tipoM==='Venta'||v.tipoM==='Sacrificio')&&v.fecha<=rt){document.getElementById('e_tipoM').textContent='El lote está en retiro de medicamento hasta el '+fd(rt)+'. No se puede vender ni sacrificar antes.';return false;}
+    var sexo=v.tipoM==='Relevo a cría'?'Hembras':v.sexo;
+    if(sx&&sexo==='Machos'&&v.cabezas>sx.m){document.getElementById('e_cabezas').textContent='Solo hay '+sx.m+' machos';return false;}
+    if(sx&&sexo==='Hembras'&&v.cabezas>sx.h){document.getElementById('e_cabezas').textContent='Solo hay '+sx.h+' hembras';return false;}
+    var pag=v.pagado===''||v.pagado==null?(v.valor||0):v.pagado;
+    reg({tipo:'movimiento',granja:l.granja,ref:id,negocio:l.negocio||'Cría',fecha:v.fecha,tipoM:v.tipoM,cabezas:v.cabezas,sexo:sexo,kg:v.kg||null,kgCanal:v.kgCanal||null,valor:v.valor||0,pagado:pag,cliente:v.cliente,nota:v.nota});
+    if(v.tipoM==='Traslado a engorde'){var nid=uid('l');put('lotes',nid,{granja:l.granja,codigo:'E-'+l.codigo,negocio:'Engorde',origen:'Traslado',loteOrigen:id,nac:l.nac,ingreso:v.fecha,cabezas:v.cabezas,machos:sexo==='Machos'?v.cabezas:(sexo==='Hembras'?0:null),hembras:sexo==='Hembras'?v.cabezas:(sexo==='Machos'?0:null),valor:v.valor||0,estado:'Activo'});}
+    if(v.tipoM==='Relevo a cría'){for(var i=1;i<=v.cabezas;i++)put('cerdas',uid('c'),{granja:l.granja,codigo:'R-'+l.codigo+'-'+i,nombre:'',tipo:'Relevo',raza:'',nac:l.nac,origen:'Relevo propio',loteOrigen:id,madre:madresDe(l)[0]||null,estadoFicha:'Activa',creado:Date.now()});}
+    if(cab-v.cabezas<=0)put('lotes',id,Object.assign({},S.lotes[id],{estado:'Cerrado'}));
+    toast(v.tipoM==='Relevo a cría'?v.cabezas+' hembras pasaron a Cerdas como relevos (R-'+l.codigo+'-1…)':(v.kgCanal&&v.kg?'Salida registrada · rendimiento '+Math.round(v.kgCanal/v.kg*100)+'%':'Salida registrada'));});}
+function fUnir(id){var l=Object.assign({id:id},S.lotes[id]),cab=cabezasLote(l);
+  var cand=vals('lotes').filter(function(x){return x.id!==id&&x.granja===l.granja&&x.estado!=='Cerrado'&&(x.negocio||'Cría')===(l.negocio||'Cría');});
+  if(!cand.length){toast('No hay otro lote activo para juntar');return;}
+  form('Juntar lote '+l.codigo,[{k:'dest',l:'Pasar sus '+cab+' cerdos al lote',type:'select',opts:cand.map(function(x){return [x.id,x.codigo+' ('+cabezasLote(x)+' cerdos, nacidos '+fd(x.nac)+')'];})},{k:'fecha',l:'Fecha',type:'date',v:iso(today()),req:true}],
+  function(v){var D=S.lotes[v.dest];
+    reg({tipo:'movimiento',granja:l.granja,ref:id,negocio:l.negocio||'Cría',fecha:v.fecha,tipoM:'Unión de lotes',cabezas:cab,nota:'Pasan al lote '+D.codigo});
+    reg({tipo:'movimiento',granja:l.granja,ref:v.dest,negocio:D.negocio||'Cría',fecha:v.fecha,tipoM:'Unión de lotes',cabezas:-cab,nota:'Llegan del lote '+l.codigo});
+    var ms=madresDe(D).slice();madresDe(l).forEach(function(m){if(ms.indexOf(m)<0)ms.push(m);});
+    var pD={madres:ms},sa=sexoLote(l),sd=sexoLote(Object.assign({id:v.dest},D));if(sa&&sd){pD.machos=(+D.machos||0)+sa.m;pD.hembras=(+D.hembras||0)+sa.h;}
+    put('lotes',v.dest,Object.assign({},D,pD));put('lotes',id,Object.assign({},S.lotes[id],{estado:'Cerrado'}));
+    ui.det={t:'lote',id:v.dest};toast(cab+' cerdos pasaron al lote '+D.codigo);});}
+function fUsuario(){form('Agregar usuario',[{k:'email',l:PROV==='ms'?'Correo de Microsoft (Outlook, Hotmail)':'Correo de Gmail',req:true,ph:PROV==='ms'?'trabajador@outlook.com':'trabajador@gmail.com'},{k:'nombre',l:'Nombre'},{k:'rol',l:'Rol',type:'select',opts:['Operario','Consulta','Administrador']}],
+  function(v){var em=String(v.email).trim().toLowerCase();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){document.getElementById('e_email').textContent='Escribe un correo válido';return false;}
+    put('usuarios',em,{email:em,nombre:v.nombre,rol:v.rol});
+    (PROV==='ms'?api(GR+'/drives/'+MSF.d+'/items/'+MSF.i+'/invite',{method:'POST',body:JSON.stringify({recipients:[{email:em}],requireSignIn:true,sendInvitation:true,roles:[v.rol==='Consulta'?'read':'write'],message:'Te agregaron a Pig App. Instala la app, entra con esta cuenta de Microsoft, elige "Unirme a una granja" y pega este código: '+codigoGranja()})})
+    :api('https://www.googleapis.com/drive/v3/files/'+SHEET+'/permissions?sendNotificationEmail=true&emailMessage='+encodeURIComponent('Te agregaron a Pig App. Instala la app, entra con este Gmail y elige "Unirme a una granja".'),{method:'POST',body:JSON.stringify({role:v.rol==='Consulta'?'reader':'writer',type:'user',emailAddress:em})}))
+      .then(function(){toast('Usuario agregado y base de datos compartida');}).catch(function(){toast('Usuario guardado. No se pudo compartir ahora: compártelo desde '+(PROV==='ms'?'OneDrive':'Google Drive')+' o inténtalo con señal.');});});}
+function fCompra(){var o={};form('Compra de alimento',[{k:'granja',l:'Granja',type:'select',opts:gOpts(),v:gDef(),req:true},{k:'fecha',l:'Fecha',type:'date',v:iso(today()),req:true},{k:'alimento',l:'Alimento',type:'select',opts:TIPOS,v:'Gestación'},{k:'bultos',l:'Bultos',type:'number',req:true},{k:'kgBulto',l:'Kg por bulto',type:'number',v:KGB},{k:'valor',l:'Valor total',type:'number',req:true},{k:'proveedor',l:'Proveedor'}],
+  function(v){reg({tipo:'compra',granja:v.granja,fecha:v.fecha,alimento:v.alimento,bultos:v.bultos,kgBulto:v.kgBulto||KGB,valor:v.valor,proveedor:v.proveedor});toast(v.bultos+' bultos de '+v.alimento.toLowerCase()+' al inventario');});}
+function fComida(ref,esLote){var o=esLote?S.lotes[ref]:S.cerdas[ref],r=esLote?racionLote(Object.assign({id:ref},o)):racionCerda(Object.assign({id:ref},o));
+  form('Comida servida · '+o.codigo,[{k:'fecha',l:'Fecha',type:'date',v:iso(today()),req:true},{k:'alimento',l:'Alimento',type:'select',opts:TIPOS,v:r.a||'Gestación'},{k:'kg',l:'Kg servidos',type:'number',v:r.kg||'',req:true,help:r.kg?'Presupuesto: '+n1(r.kg)+' kg':''}],
+  function(v){reg({tipo:'consumo',granja:o.granja,ref:ref,negocio:esLote?(o.negocio||'Cría'):'Cría',fecha:v.fecha,alimento:v.alimento,kg:v.kg});toast('Guardado');});}
+function fGasto(){form('Registrar gasto',[{k:'granja',l:'Granja',type:'select',opts:gOpts(),v:gDef(),req:true},{k:'fecha',l:'Fecha',type:'date',v:iso(today()),req:true},{k:'negocio',l:'Negocio',type:'select',opts:['Cría','Engorde','General']},{k:'concepto',l:'Concepto',type:'select',opts:['Semen / inseminación','Mano de obra','Transporte','Energía y agua','Mantenimiento','Veterinario','Implementos','Otro']},{k:'valor',l:'Valor',type:'number',req:true},{k:'nota',l:'Descripción'}],
+  function(v){reg({tipo:'gasto',granja:v.granja,fecha:v.fecha,negocio:v.negocio,concepto:v.concepto,valor:v.valor,nota:v.nota});toast('Gasto registrado');});}
+function fRacion(){var pre=presupuesto(),rows=[];TIPOS.forEach(function(t){pre[t].grupos.forEach(function(g){rows.push(Object.assign({a:t},g));});});
+  if(!rows.length){toast('No hay animales con ración');return;}
+  var b='<form id="rf" style="display:flex;flex-direction:column;gap:6px"><div class="field"><label for="rf_fecha">Fecha</label><input id="rf_fecha" type="date" value="'+iso(today())+'"></div><p class="note">Viene lleno con el presupuesto. Cambia lo que realmente serviste.</p>';
+  rows.forEach(function(r,i){b+='<div class="row-in"><label for="rf_'+i+'"><b>'+esc(r.n)+'</b><br><span class="note">'+esc(r.a)+'</span></label><input id="rf_'+i+'" inputmode="decimal" value="'+r.kg+'"></div>';});
+  b+='<button class="btn pri wide" type="submit">Guardar comida del día</button></form>';
+  layer.innerHTML=sheetHTML('Comida de hoy',b);formCb=null;
+  document.getElementById('rf').onsubmit=function(ev){ev.preventDefault();var f=document.getElementById('rf_fecha').value||iso(today()),n=0;
+    rows.forEach(function(r,i){var v=+String(document.getElementById('rf_'+i).value).replace(',','.');if(v>0){reg({tipo:'consumo',granja:r.granja,ref:r.ref,negocio:r.neg||'Cría',fecha:f,alimento:r.a,kg:v});n++;}});
+    close();render();toast(n+' raciones registradas');};
+}
+function fMenu(){var b='<div class="menu">'+[['racion','Comida de hoy','Raciones según presupuesto'],['compra','Compra de alimento','Entra al inventario'],['newcerda','Nueva cerda','Madre o relevo'],['newlote','Nuevo lote','Cerdos de engorde comprados'],['gasto','Gasto','Mano de obra, transporte…'],['newfarm','Nueva granja','']].map(function(x){return '<button data-act="'+x[0]+'"><b>'+x[1]+'</b><span>'+x[2]+'</span></button>';}).join('')+'</div><p class="note">Servicios, partos, destetes y pesajes se registran desde la ficha de cada cerda o lote.</p>';
+  layer.innerHTML=sheetHTML('Registrar',b);}
+function fFarmPick(){var gs=granjas();var b='<div class="list">'+(gs.length>1?'<button class="item" data-act="setfarm" data-id="todas"><span class="t">Todas las granjas</span></button>':'')+gs.map(function(g){return '<button class="item" data-act="setfarm" data-id="'+g.id+'"><span class="t">'+esc(g.nombre)+'</span>'+(ui.granja===g.id?'<span class="r">✓</span>':'')+'</button>';}).join('')+'</div><button class="btn wide" data-act="newfarm">+ Nueva granja</button>';layer.innerHTML=sheetHTML('Granja',b);}
+
+
+/* ============ módulos adicionales ============ */
+function fAdopcion(id){var c=S.cerdas[id],ci=ultimoCiclo(id),otras=cerdas().filter(function(x){return x.id!==id&&estadoCerda(x).e==='Lactante';});
+  if(!otras.length){toast('No hay otra cerda lactando para hacer la adopción');return;}
+  form('Adopción · '+c.codigo,[{k:'dir',l:'Qué pasó',type:'select',opts:[['recibe',c.codigo+' recibe lechones'],['entrega',c.codigo+' entrega lechones']]},{k:'otra',l:'La otra cerda',type:'select',opts:otras.map(function(x){return [x.id,x.codigo+' · '+lechonesLactando(estadoCerda(x).ciclo)+' lechones'];})},{k:'cant',l:'Cuántos lechones',type:'number',req:true,v:1},{k:'fecha',l:'Fecha',type:'date',v:iso(today()),req:true}],
+  function(v){var o=ultimoCiclo(v.otra),da=v.dir==='recibe'?o:ci,re=v.dir==='recibe'?ci:o;
+    if(v.cant>lechonesLactando(da)){document.getElementById('e_cant').textContent='La que entrega solo tiene '+lechonesLactando(da);return false;}
+    setCiclo(da,{adoptSalen:(+S.ciclos[da.id].adoptSalen||0)+v.cant});setCiclo(re,{adoptEntran:(+S.ciclos[re.id].adoptEntran||0)+v.cant});
+    toast('Adopción registrada');});}
+function ocupacionParideras(semanas){var out=[],t=today(),gs=granjas();
+  var cap=ui.granja==='todas'?gs.reduce(function(s,g){return s+(+g.parideras||0);},0):(+((S.granjas[ui.granja]||{}).parideras)||0);
+  var per=[];cerdas().forEach(function(c){var st=estadoCerda(c);if(st.e==='Gestante'){var s=parse(st.ciclo.servicio);per.push({c:c,a:add(s,107),b:add(s,GEST+LACT)});}else if(st.e==='Lactante'){var p=parse(st.ciclo.parto);per.push({c:c,a:add(p,-7),b:add(p,LACT)});}});
+  var lunes=add(t,-((t.getDay()+6)%7));
+  for(var w=0;w<semanas;w++){var a=add(lunes,7*w),b=add(a,6);var q=per.filter(function(x){return x.a<=b&&x.b>=a;});out.push({d:a,n:q.length,cap:cap,quien:q.map(function(x){return x.c.codigo;})});}
+  return out;}
+function vParideras(){var w=ocupacionParideras(20),cap=w.length?w[0].cap:0,h='';
+  if(!cap)h+='<div class="alert warn">Escribe cuántas parideras tienes en Más → Granjas para que la app te avise si coinciden más partos que puestos.</div>';
+  var mx=Math.max(1,cap,Math.max.apply(null,w.map(function(x){return x.n;})));
+  h+='<div class="card"><span class="label">Cerdas en paridera por semana</span><p class="note">Entran 7 días antes del parto y salen al destete.</p><div class="list">'+w.map(function(x){var over=cap&&x.n>cap;return '<div class="item static"><span class="t">Semana del '+fd(x.d)+'</span><span class="r" style="'+(over?'color:var(--bad)':'')+'">'+x.n+(cap?' de '+cap:'')+'</span><span class="s"><span class="meter" style="display:block"><i style="width:'+Math.min(100,x.n/mx*100)+'%;'+(over?'background:var(--bad)':'')+'"></i></span>'+(x.quien.length?esc(x.quien.join(', ')):'')+'</span></div>';}).join('')+'</div></div>';
+  return h;}
+function indicadores(){var t=today(),hace=iso(add(t,-365)),cs=vals('ciclos').filter(enGranja);
+  var madres=cerdas().filter(function(c){var e=estadoCerda(c).e;return e!=='Relevo'&&e!=='Fuera';}).length;
+  var partos=cs.filter(function(c){return c.parto&&c.parto>=hace;}),dest=cs.filter(function(c){return c.destete&&c.destete>=hace;});
+  var vivos=partos.reduce(function(s,c){return s+(+c.vivos||0);},0),dts=dest.reduce(function(s,c){return s+(+c.destetados||0);},0);
+  var baseD=dest.reduce(function(s,c){return s+(+c.vivos||0)+(+c.adoptEntran||0)-(+c.adoptSalen||0);},0);
+  var res=cs.filter(function(c){return c.servicio>=hace&&(c.parto||c.resultado==='Repitió'||c.resultado==='Aborto');});
+  var ids=[];vals('cerdas').filter(enGranja).forEach(function(c){var x=ciclosDe(c.id);for(var i=1;i<x.length;i++)if(x[i-1].destete&&x[i].servicio>=x[i-1].destete)ids.push(diff(parse(x[i-1].destete),parse(x[i].servicio)));});
+  return {madres:madres,partos:partos.length,vivosP:partos.length?vivos/partos.length:null,destP:dest.length?dts/dest.length:null,mort:baseD?1-dts/baseD:null,dca:madres?dts/madres:null,pren:res.length?partos.filter(function(c){return c.servicio>=hace;}).length/res.length:null,ids:ids.length?ids.reduce(function(a,b){return a+b;},0)/ids.length:null};}
+function vIndicadores(){var I=indicadores(),f=function(x,d){return x==null?'—':(d?n1(x):n0(x));},pc=function(x){return x==null?'—':Math.round(x*100)+'%';};
+  var h='<div class="card"><span class="label">Granja · últimos 12 meses</span><dl class="kv"><dt>Cerdas madres</dt><dd>'+I.madres+'</dd><dt>Partos</dt><dd>'+I.partos+'</dd><dt>Nacidos vivos por parto</dt><dd>'+f(I.vivosP,1)+'</dd><dt>Destetados por parto</dt><dd>'+f(I.destP,1)+'</dd><dt>Mortalidad antes del destete</dt><dd>'+pc(I.mort)+'</dd><dt>Destetados por cerda al año</dt><dd>'+f(I.dca,1)+'</dd><dt>Preñez (partos / servicios)</dt><dd>'+pc(I.pren)+'</dd><dt>Días del destete al servicio</dt><dd>'+f(I.ids,1)+'</dd></dl>';
+  h+='<p class="note">Referencias para granjas pequeñas: 10 a 12 nacidos vivos, menos de 10% de mortalidad, más de 20 destetados por cerda al año, más de 85% de preñez y menos de 7 días del destete al servicio.</p></div>';
+  var rows=cerdas().filter(function(c){return estadoCerda(c).e!=='Relevo';}).map(function(c){var x=ciclosDe(c.id),p=x.filter(function(z){return z.parto;}),d=x.filter(function(z){return z.destete;});
+    return {c:c,p:p.length,v:p.length?p.reduce(function(s,z){return s+(+z.vivos||0);},0)/p.length:null,d:d.length?d.reduce(function(s,z){return s+(+z.destetados||0);},0)/d.length:null,r:x.filter(function(z){return z.resultado==='Repitió'||z.resultado==='Aborto';}).length};});
+  h+='<div class="card"><span class="label">Por cerda</span><div class="list">'+rows.map(function(x){return '<button class="item" data-act="cerda" data-id="'+x.c.id+'"><span class="t">'+esc(x.c.codigo+' · '+(x.c.nombre||''))+'</span><span class="r">'+x.p+' partos</span><span class="s">Vivos '+f(x.v,1)+' · destetados '+f(x.d,1)+' · fallas '+x.r+'</span></button>';}).join('')+'</div></div>';
+  return h;}
+function vCobrar(){var pend=regs('movimiento').filter(function(m){return enGranja(m)&&(+m.valor||0)>(+m.pagado||0);});
+  var tot=pend.reduce(function(s,m){return s+(+m.valor)-(+m.pagado||0);},0);
+  var h='<div class="card"><div class="card-h"><span class="label">Te deben</span><b class="mono">'+money(tot)+'</b></div>';
+  h+=pend.length?'<div class="list">'+pend.map(function(m){var l=S.lotes[m.ref];return '<div class="item static"><span class="t">'+esc(m.cliente||'Sin nombre')+'</span><span class="r">'+money(m.valor-(m.pagado||0))+'</span><span class="s">'+esc(m.tipoM)+' · '+(l?'lote '+esc(l.codigo)+' · ':'')+fd(m.fecha)+' · pagó '+money(m.pagado||0)+' de '+money(m.valor)+' <button class="btn" style="padding:2px 8px;font-size:.75rem" data-act="pago" data-id="'+m.id+'">Registrar pago</button></span></div>';}).join('')+'</div>':'<p class="note">Nadie te debe.</p>';
+  return h+'</div>';}
+function fPago(id){var m=S.regs[id],deb=(+m.valor)-(+m.pagado||0);form('Pago de '+(m.cliente||'cliente'),[{k:'monto',l:'Valor recibido',type:'number',v:deb,req:true,help:'Debe '+money(deb)+'.'}],function(v){if(v.monto>deb){document.getElementById('e_monto').textContent='No puede ser más de '+money(deb);return false;}put('regs',id,Object.assign({},m,{pagado:(+m.pagado||0)+v.monto}));toast('Pago registrado');});}
+function costoLoteTotal(l){var inv=inventario();return (+l.valor||0)+regs('consumo',l.id).reduce(function(s,x){return s+(+x.kg||0)*(inv[x.alimento]?inv[x.alimento].costoKg:0);},0)+regs('sanidad',l.id).reduce(function(s,x){return s+(+x.valor||0);},0)+regs('gasto',l.id).reduce(function(s,x){return s+(+x.valor||0);},0);}
+function vHato(){var tot=0,rowsC=[],rowsL=[];
+  cerdas().forEach(function(c){var v=+c.valorCompra||0,base='compra';if(!v&&c.loteOrigen&&S.lotes[c.loteOrigen]){var L=Object.assign({id:c.loteOrigen},S.lotes[c.loteOrigen]);var n=Math.max(1,+L.cabezas||1);v=costoLoteTotal(L)/n;base='costo del lote';}tot+=v;rowsC.push({c:c,v:v,b:base});});
+  lotes().forEach(function(l){var v=costoLoteTotal(l);tot+=v;rowsL.push({l:l,v:v,n:cabezasLote(l)});});
+  var h='<div class="card"><div class="card-h"><span class="label">Valor al '+fd(today())+'</span><b class="mono">'+money(tot)+'</b></div><p class="note">Activos biológicos medidos al costo: cerdas al valor de compra (o al costo por cabeza de su lote si son relevos propios) y lotes al costo acumulado de ingreso, alimento, sanidad y gastos. La NIIF para Pymes (sección 34) permite el modelo del costo cuando el valor razonable no se puede medir sin costo o esfuerzo desproporcionado.</p></div>';
+  h+='<div class="card"><span class="label">Cerdas</span><div class="list">'+rowsC.map(function(x){return '<div class="item static"><span class="t">'+esc(x.c.codigo+' · '+(x.c.nombre||''))+'</span><span class="r">'+money(x.v)+'</span><span class="s">'+x.b+'</span></div>';}).join('')+'</div></div>';
+  if(rowsL.length)h+='<div class="card"><span class="label">Lotes</span><div class="list">'+rowsL.map(function(x){return '<div class="item static"><span class="t">Lote '+esc(x.l.codigo)+' · '+x.n+' cerdos</span><span class="r">'+money(x.v)+'</span></div>';}).join('')+'</div></div>';
+  return h;}
+var dlNs=null;
+function guardarArchivo(nombre,data){var tipo=/\.ics$/.test(nombre)?'text/calendar':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';var b=new Blob([data],{type:tipo}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=nombre;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(u);a.remove();},2000);toast('Descargando '+nombre);}
+function icsFecha(d){return d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');}
+function exportarICS(){var ev=proximosEventos(90).filter(function(x){return x.e.d>=today();});if(!ev.length){toast('No hay eventos en los próximos 90 días');return;}
+  var L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Granja Porcina//ES','CALSCALE:GREGORIAN'];
+  ev.forEach(function(x,i){var t=(x.e.t+' · '+x.quien).replace(/[,;]/g,' ');L.push('BEGIN:VEVENT','UID:gp-'+icsFecha(x.e.d)+'-'+i+'-'+(x.id||'x')+'@granja','DTSTAMP:'+icsFecha(today())+'T000000Z','DTSTART;VALUE=DATE:'+icsFecha(x.e.d),'DTEND;VALUE=DATE:'+icsFecha(add(x.e.d,1)),'SUMMARY:'+t,'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+t,'TRIGGER:PT7H','END:VALARM','END:VEVENT');});
+  L.push('END:VCALENDAR');guardarArchivo('pig-app-agenda.ics',L.join('\r\n'));}
+function cargarXLSX(cb){if(window.XLSX)return cb();var sc=document.createElement('script');sc.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';sc.onload=cb;sc.onerror=function(){toast('No se pudo cargar el generador de Excel. Revisa la señal.');};document.head.appendChild(sc);}
+function hojasLegibles(){
+  var inv=inventario(),pre=presupuesto();
+  var cer=vals('cerdas').filter(enGranja).map(function(c){var st=estadoCerda(c),p=pesoCerda(c),r=racionCerda(c);return {Codigo:c.codigo,Nombre:c.nombre||'',Granja:nombreG(c.granja),Tipo:c.tipo,Raza:c.raza||'',Nacimiento:c.nac||'',Edad_meses:c.nac?Math.round(edadDias(c.nac)/30.4*10)/10:'',Estado:st.e,Peso_kg:p?Math.round(p.kg):'',Peso_es_estimado:p?(p.estimado?'Sí':'No'):'',Alimento:r.a||'',Kg_dia:r.kg||0,Partos:ciclosDe(c.id).filter(function(x){return x.parto;}).length,Valor_compra:esDueno?(c.valorCompra||''):''};});
+  var cic=vals('ciclos').filter(enGranja).map(function(x){return {Cerda:(S.cerdas[x.cerda]||{}).codigo||'',Servicio:x.servicio||'',Tipo:x.tipoS||'',Segundo_servicio:x.servicio2||'',Resultado:x.resultado||'',Parto:x.parto||'',Vivos:x.vivos||'',Muertos:x.muertos||'',Momias:x.momias||'',Machos:x.machos==null?'':x.machos,Hembras:x.hembras==null?'':x.hembras,Muertes_lactancia:x.muertesLact||0,Adopciones_entran:x.adoptEntran||0,Adopciones_salen:x.adoptSalen||0,Destete:x.destete||'',Destetados:x.destetados||''};});
+  var lot=vals('lotes').filter(enGranja).map(function(l){var p=pesoLote(l),cv=conversionLote(l),sx=sexoLote(l);return {Codigo:l.codigo,Negocio:l.negocio||'Cría',Estado:l.estado,Nacimiento:l.nac||'',Cabezas_inicio:l.cabezas,Cabezas_hoy:cabezasLote(l),Machos:sx?sx.m:'',Hembras:sx?sx.h:'',Peso_promedio_kg:p?Math.round(p.kg*10)/10:'',Conversion:cv?Math.round(cv.ca*100)/100:'',Costo_total:esDueno?Math.round(costoLoteTotal(l)):''};});
+  var rg=vals('regs').filter(enGranja).sort(function(a,b){return (a.fecha||'').localeCompare(b.fecha||'');}).map(function(r){var who=S.cerdas[r.ref]?S.cerdas[r.ref].codigo:(S.lotes[r.ref]?S.lotes[r.ref].codigo:'');return {Fecha:r.fecha,Tipo:r.tipo,Animal_o_lote:who,Detalle:r.tipoM||r.tipoS||r.alimento||r.concepto||'',Producto:r.producto||'',Kg:r.kg||'',Cabezas:r.cabezas||'',Bultos:r.bultos||'',Valor:esDueno?(r.valor||''):'',Pagado:esDueno?(r.pagado==null?'':r.pagado):'',Cliente:r.cliente||'',Retiro_hasta:r.retiroHasta||'',Nota:r.nota||r.proveedor||''};});
+  var al=TIPOS.map(function(t){var p=pre[t].dia,x=inv[t];return {Alimento:t,Kg_dia:Math.round(p*10)/10,Kg_semana:Math.round(p*70)/10,Inventario_kg:Math.round(x.stock),Dias_que_alcanza:p>0?Math.floor(Math.max(0,x.stock)/p):'',Bultos_a_comprar_30_dias:p>0?Math.max(0,Math.ceil((p*30-Math.max(0,x.stock))/KGB)):0,Costo_kg:esDueno?Math.round(x.costoKg):''};});
+  var I=indicadores(),ind=[['Cerdas madres',I.madres],['Partos 12 meses',I.partos],['Nacidos vivos por parto',I.vivosP],['Destetados por parto',I.destP],['Mortalidad antes del destete',I.mort],['Destetados por cerda al año',I.dca],['Preñez',I.pren],['Días destete a servicio',I.ids]].map(function(r){return {Indicador:r[0],Valor:r[1]==null?'':Math.round(r[1]*100)/100};});
+  return [['Cerdas',cer],['Ciclos',cic],['Lotes',lot],['Registros',rg],['Alimento',al],['Indicadores',ind]];}
+function exportarExcel(){toast('Preparando el Excel…');cargarXLSX(function(){var wb=XLSX.utils.book_new();
+  hojasLegibles().forEach(function(x){XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(x[1].length?x[1]:[{Sin_datos:''}]),x[0]);});
+  var out=XLSX.write(wb,{bookType:'xlsx',type:'array'});guardarArchivo('pig-app-'+iso(today())+'.xlsx',new Uint8Array(out));});}
+
+/* ============ eventos ============ */
+document.addEventListener('click',function(ev){
+  var tb=ev.target.closest('[data-tab]');if(tb&&!layer.contains(tb)){ui.tab=tb.dataset.tab;ui.det=null;ui.filtro='todas';try{history.replaceState(null,'','#'+ui.tab);}catch(e){}render();window.scrollTo(0,0);return;}
+  if(ev.target.classList&&ev.target.classList.contains('sheet-wrap')){close();return;}
+  var el=ev.target.closest('[data-act]');if(!el)return;var a=el.dataset.act,id=el.dataset.id,v=el.dataset.v;
+  var inLayer=layer.contains(el);if(inLayer&&a!=='close'&&a!=='scrim'&&a!=='setfarm')close();
+  switch(a){
+    case 'close':close();break;
+    case 'back':ui.det=null;render();window.scrollTo(0,0);break;
+    case 'cerda':ui.det={t:'cerda',id:id};render();window.scrollTo(0,0);break;
+    case 'lote':ui.det={t:'lote',id:id};render();window.scrollTo(0,0);break;
+    case 'rep':ui.det={t:'rep',id:v};render();window.scrollTo(0,0);break;
+    case 'filtro':ui.filtro=v;ui.tab='cerdas';ui.det=null;render();break;
+    case 'per':ui.per=v;render();break;
+    case 'pickfarm':fFarmPick();break;
+    case 'setfarm':ui.granja=id;persist();close();render();break;
+    case 'newfarm':fGranja();break;
+    case 'editfarm':fGranja(id);break;
+    case 'newcerda':fCerda();break;
+    case 'editcerda':fCerda(id);break;
+    case 'servicio':fServicio(id);break;
+    case 'preñada':setCiclo(ultimoCiclo(id),{resultado:'Preñada',confirmacion:iso(today())});toast('Preñez confirmada');render();break;
+    case 'repitio':fConfirm('¿Repitió celo?','El servicio se marca como fallido y la cerda vuelve a "vacía".','Sí, repitió',function(){setCiclo(ultimoCiclo(id),{resultado:'Repitió'});toast('Registrado: vuelve a vacía');});break;
+    case 'parto':fParto(id);break;
+    case 'destete':fDestete(id);break;
+    case 'pesar':fPesar(id);break;
+    case 'sanidad':fSanidad(id,false);break;
+    case 'baja':fBaja(id);break;
+    case 'newlote':fLote();break;
+    case 'pesarlote':fPesarLote(id);break;
+    case 'salida':fSalida(id);break;
+    case 'selmadres':fSalida(id,'Relevo a cría');break;
+    case 'comidalote':fComida(id,true);break;
+    case 'sanidadlote':fSanidad(id,true);break;
+    case 'unirlote':fUnir(id);break;
+    case 'adopcion':fAdopcion(id);break;
+    case 'aborto':fConfirm('¿Registrar aborto?','El ciclo queda como aborto y la cerda vuelve a "vacía".','Sí, abortó',function(){setCiclo(ultimoCiclo(id),{resultado:'Aborto',fechaAborto:iso(today())});toast('Aborto registrado');});break;
+    case 'segunda':setCiclo(ultimoCiclo(id),{servicio2:iso(today())});toast('Segunda inseminación registrada');render();break;
+    case 'pago':fPago(id);break;
+    case 'login':entrar();break;
+    case 'logout':fConfirm('¿Cerrar sesión?',pendientes()?'Hay cambios sin subir a Drive: se perderán. Sincroniza primero si tienes señal.':'Se borra la copia de este celular; tus datos siguen en Drive.','Cerrar sesión',salir);break;
+    case 'crearbase':if(PROV==='ms')msCrear();else crearBase();break;
+    case 'loginms':entrarMS();break;
+    case 'demo':PROV='demo';AUTH.email='demo@pigapp';AUTH.name='Prueba';persist();if(!Object.keys(S.granjas).length)importarSeed();render();break;
+    case 'unirse':unirse((document.getElementById('joinlink')||{}).value);break;
+    case 'sync':case 'syncnow':sync(true);break;
+    case 'importar':importarSeed();break;
+    case 'nuevousu':fUsuario();break;
+    case 'quitarusu':fConfirm('¿Quitar este usuario?','Deja de aparecer en la app. Para quitarle el acceso del todo, retíralo también de la hoja en Google Drive (botón Compartir).','Quitar',function(){del('usuarios',id);toast('Usuario quitado');});break;
+    case 'copiarlink':var lk=codigoGranja();if(navigator.clipboard)navigator.clipboard.writeText(lk).then(function(){toast('Enlace copiado');},function(){toast(lk);});else toast(lk);break;
+    case 'excel':exportarExcel();break;
+    case 'ics':exportarICS();break;
+    case 'saveraciones':(function(){var N=NORMAS(),et=[],ok=true;N.forEach(function(n,i){var kg=+String(document.getElementById('nr_k_'+i).value).replace(',','.');if(!(kg>=0)||isNaN(kg))ok=false;et.push({e:n.e,d0:n.d0,d1:n.d1,a:document.getElementById('nr_a_'+i).value,kg:kg});});
+      var md={a:document.getElementById('md_a').value};['vacia','gest1','gest2','lactBase','lactLechon','relevo','descarte'].forEach(function(k){var v=+String(document.getElementById('md_'+k).value).replace(',','.');if(isNaN(v)||v<0)ok=false;md[k]=v;});
+      if(!ok){document.getElementById('rc_err').textContent='Revisa los kilos: deben ser números.';return;}put('config','normas',{etapas:et,madres:md});toast('Raciones guardadas');render();})();break;
+    case 'resetraciones':fConfirm('¿Volver a los valores de referencia?','Se borran tus ajustes de raciones.','Restaurar',function(){del('config','normas');toast('Raciones de referencia');});break;
+    case 'muertelech':fMuerteLech(id);break;
+    case 'pesarcamada':fPesarCamada(id);break;
+    case 'cerrarlote':fConfirm('¿Cerrar el lote?','Deja de contar para raciones y reportes de animales activos.','Cerrar lote',function(){put('lotes',id,Object.assign({},S.lotes[id],{estado:'Cerrado'}));toast('Lote cerrado');});break;
+    case 'compra':fCompra();break;
+    case 'gasto':fGasto();break;
+    case 'racion':fRacion();break;
+    case 'delreg':fConfirm('¿Borrar este registro?','No se puede deshacer.','Borrar',function(){del('regs',id);toast('Registro borrado');});break;
+    case 'okconfirm':if(confirmCb){var cb=confirmCb;confirmCb=null;cb();render();}break;
+  }
+});
+var confirmCb=null;
+function fConfirm(t,msg,btn,cb){confirmCb=cb;layer.innerHTML=sheetHTML(t,'<p class="note">'+esc(msg)+'</p><button class="btn pri wide" data-act="okconfirm">'+esc(btn)+'</button>');}
+document.addEventListener('keydown',function(e){if((e.key==='Enter'||e.key===' ')&&e.target&&e.target.id==='sync'){e.preventDefault();sync(true);}});
+document.getElementById('fab').addEventListener('click',function(){if(!granjas().length){fGranja();return;}fMenu();});
+var h0=(location.hash||'').slice(1);if(['inicio','cerdas','lotes','alimento','mas'].indexOf(h0)>=0)ui.tab=h0;
+window.addEventListener('hashchange',function(){var h=(location.hash||'').slice(1);if(['inicio','cerdas','lotes','alimento','mas'].indexOf(h)>=0&&h!==ui.tab){ui.tab=h;ui.det=null;render();}});
+
+/* ============ arranque ============ */
+render();
+window.addEventListener('load',function(){if(msListo()&&(PROV==='ms'||!AUTH.email))msVolver();});
+if(PROV!=='ms'&&SHEET&&AUTH.email&&navigator.onLine){var tryS=function(n){if(gsiListo()||n>20){sync(false);return;}setTimeout(function(){tryS(n+1);},300);};tryS(0);}
+if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}
+})();
+</script>
+</body>
+</html>
